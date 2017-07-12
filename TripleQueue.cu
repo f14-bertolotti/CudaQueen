@@ -18,30 +18,46 @@ struct TripleQueue{
 
 	Triple* q;
 
-	__device__ TripleQueue(int,int); 	//initialize and allcate
+	__device__ TripleQueue();					//do nothing
+	__device__ TripleQueue(Triple*,int,int); 	//initialize and allcate
+	__device__ void init(Triple*,int,int);		//initialize and allcate
 
 	__device__ void add(int,int,int);	//add a Triple at the end
 	__device__ void pop();				//delete last element
 	__device__ Triple* front();			//return last element
-	__device__ void resize();			//resize if needed
 	__device__ bool empty();			//return true if empty
 	__device__ void print();			//print
 
-	__device__ ~TripleQueue();			//free memory
+	__device__ ~TripleQueue();			//do nothing
 };
 
 ////////////////////////////////////////////////////////////////////
 
-__device__ TripleQueue::TripleQueue(int nvr,int nvl):
-		nVars(nvr),nVals(nvl),size(nvr*nvr),count(0){
-	q = (Triple*)malloc(size*sizeof(Triple));
+__device__ TripleQueue::TripleQueue(){}
+
+////////////////////////////////////////////////////////////////////
+
+__device__ TripleQueue::TripleQueue(Triple* queue,int nvr,int nvl):
+		q(queue),nVars(nvr),nVals(nvl),size(nvr*nvr*3),count(0){
+}
+
+////////////////////////////////////////////////////////////////////
+
+__device__ void TripleQueue::init(Triple* queue,int nvr,int nvl){
+	q = queue;
+	nVars = nvr;
+	nVals = nvl;
+	size = nvr*nvr*3;
+	count = 0;
 }
 
 ////////////////////////////////////////////////////////////////////
 
 __device__ void TripleQueue::add(int var, int val, int cs){
-	if(count==size)resize();
-	
+	if(count==size){
+		printf("Error::TripleQueue::add::OUT OF SPACE\n");
+		return;
+	}
 	q[count].var = var;
 	q[count].cs = cs;
 	q[count].val = val;
@@ -71,18 +87,6 @@ __device__ Triple* TripleQueue::front(){
 
 ////////////////////////////////////////////////////////////////////
 
-__device__ void TripleQueue::resize(){
-	Triple* tq = (Triple*)malloc(2*size*sizeof(Triple));
-	for(int i = 0; i < size; ++i)
-		tq[i]=q[i];
-	
-	size = 2*size;
-	free(q);
-	q = tq;
-}
-
-////////////////////////////////////////////////////////////////////
-
 __device__ bool TripleQueue::empty(){
 	if(count == 0)return true;
 	return false;
@@ -98,11 +102,9 @@ __device__ void TripleQueue::print(){
 
 ////////////////////////////////////////////////////////////////////
 
-__device__ TripleQueue::~TripleQueue(){
-	free(q);
-}
+__device__ TripleQueue::~TripleQueue(){}
 
-
+////////////////////////////////////////////////////////////////////
 
 
 

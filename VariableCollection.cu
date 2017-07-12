@@ -7,17 +7,18 @@
 
 struct VariableCollection{
 
+	bool dbg;		//if on is verbose
 	int nVars;
 	int nVals;
-	Variable** vars;
+	Variable* vars;
 	QueenConstraints* qc;
 
-	__device__ VariableCollection(int,int);	//allocate nVars of nVal each one
-											//and initialize them
+	__device__ VariableCollection();
+	__device__ VariableCollection(Variable*,QueenConstraints*,int,int);	//inits
+
+	__device__ void init(Variable*,QueenConstraints*,int,int);			//inits
 
 	__device__ void assign(int,int);	//assign for a specific var and val
-
-	bool dbg;		//if on is verbose
 
 	__device__ bool isGround();			//check if v.c. is ground
 	__device__ bool isSolution();		//check if v.c. is in solution
@@ -29,33 +30,39 @@ struct VariableCollection{
 
 };
 
+///////////////////////////////////////////////////////////////////////////////////////
+
+__device__ VariableCollection::VariableCollection(){}
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
-__device__ VariableCollection::VariableCollection(int nvr, int nvl):nVars(nvr),nVals(nvl){
+__device__ VariableCollection::VariableCollection(Variable* doms, QueenConstraints* qcptr,
+		int nvr, int nvl):vars(doms), qc(qcptr), nVars(nvr),nVals(nvl){
+	dbg = false;
+}
 
-	vars = (Variable**)malloc(nVars*sizeof(Variable*));
+///////////////////////////////////////////////////////////////////////////////////////
 
-	qc = new QueenConstraints(nVars,nVals);
-
-	for(int i = 0; i < nVars; ++i)
-		vars[i] = new Variable(nvl);
+__device__ void VariableCollection::init(Variable* doms, QueenConstraints* qcptr, int nvr, int nvl){
+	nVars = nvr;
+	nVals = nvl;
+	vars = doms;
+	qc = qcptr;
 
 	dbg = false;
-
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
 __device__ void VariableCollection::assign(int var, int val){
-	vars[var]->assign(val);
+	vars[var].assign(val);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
 __device__ bool VariableCollection::isGround(){
 	for(int i = 0; i < nVars; ++i)
-		if(vars[i]->ground==-1)return false;
+		if(vars[i].ground==-1)return false;
 
 	return true;
 }
@@ -74,7 +81,7 @@ __device__ bool VariableCollection::isSolution(){
 
 __device__ bool VariableCollection::isFailed(){
 	for(int i = 0; i < nVars; ++i)
-		if(vars[i]->failed == 1)return true;
+		if(vars[i].failed == 1)return true;
 
 	return false;
 }
@@ -83,19 +90,14 @@ __device__ bool VariableCollection::isFailed(){
 
 __device__ void VariableCollection::print(int mode){
 	for(int i = 0; i < nVars; ++i)
-		vars[i]->print(mode);
+		vars[i].print(mode);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
-__device__ VariableCollection::~VariableCollection(){
-	for(int i = 0; i < nVars; ++i)
-		delete(vars[i]);
-	delete(qc);
-	if(dbg)printf("msg::VariableCollection::~VariableCollection::FREE VC\n");
-	free(vars);
-}
+__device__ VariableCollection::~VariableCollection(){}
 
+///////////////////////////////////////////////////////////////////////////////////////
 
 
 
