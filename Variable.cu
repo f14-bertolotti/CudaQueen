@@ -11,9 +11,10 @@ struct Variable{
 
 	int *domain;
 
-__device__ Variable(int);	//inizializza la variabile
-							//ne alloca la memoria
+__device__ Variable();
+__device__ Variable(int*,int);	//inizializza la variabile
 
+__device__ void init(int*,int);	//initialize variables
 
 __device__ void assign(int);		//assegna la variabile
 __device__ void undoAssign(int);	//disfa l'assegnamento
@@ -24,15 +25,30 @@ __device__ void checkFailed();
 
 __device__ void print(int);	//stampa with modes
 
-__device__ ~Variable();		//dealloca la memoria
+__device__ ~Variable();		//do nothing
 
 };
 
+//////////////////////////////////////////////////////////////////////////////////////////
+
+__device__ Variable::Variable(){}
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
-__device__ Variable::Variable(int sz):size(sz){
-	domain = (int*)malloc(size*sizeof(int));
+__device__ Variable::Variable(int* dom, int sz):size(sz),domain(dom){
+	for(int i = 0; i < size; ++i)
+		domain[i]=1;
+	ground  = -1;
+	changed = -1;
+	failed  = -1;
+	dbg = false;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+__device__ void Variable::init(int* dom, int sz){
+	size = sz;
+	domain = dom;
 	for(int i = 0; i < size; ++i)
 		domain[i]=1;
 	ground  = -1;
@@ -167,10 +183,7 @@ __device__ void Variable::print(int mode){
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-__device__ Variable::~Variable(){
-	if(dbg)printf("msg::Variable::~Variable::FREE VAR\n");
-	free(domain);
-}
+__device__ Variable::~Variable(){}
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
