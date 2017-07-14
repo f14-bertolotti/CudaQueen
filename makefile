@@ -8,7 +8,7 @@ make0:
 	$(NCC) ./CUDAqueen.cu -o ./bin/RCUDA $(NCCFLAGS) $(LIB)
 
 run-memcheck:
-	make make0 && cuda-memcheck .mkdi/bin/RCUDA
+	make make0 && cuda-memcheck ./bin/RCUDA
 
 run: 
 	make make0 && ./bin/RCUDA
