@@ -1,8 +1,8 @@
 #pragma once
 #include <stdio.h>
-#include "QueenConstraints.cu"
-#include "QueenPropagation.cu"
-#include "VariableCollection.cu"
+#include "../QueenConstraints/QueenConstraints.cu"
+#include "../QueenPropagation/QueenPropagation.cu"
+#include "../VariableCollection/VariableCollection.cu"
 
 struct WorkSet{
 	int nVars;

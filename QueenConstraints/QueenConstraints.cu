@@ -1,5 +1,5 @@
 #pragma once
-#include "Variable.cu"
+#include "../Variable/Variable.cu"
 
 /*
 	constraints to be checked only if VC is all ground

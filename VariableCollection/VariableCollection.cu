@@ -1,8 +1,8 @@
 #pragma once
 
 #include <stdio.h>
-#include "./Variable.cu"
-#include "./QueenConstraints.cu"
+#include "../Variable/Variable.cu"
+#include "../QueenConstraints/QueenConstraints.cu"
 
 
 struct VariableCollection{

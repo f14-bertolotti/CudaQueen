@@ -1,8 +1,8 @@
 #pragma once
 #include <stdio.h>
-#include "Variable.cu"
-#include "VariableCollection.cu"
-#include "TripleQueue.cu"
+#include "../Variable/Variable.cu"
+#include "../VariableCollection/VariableCollection.cu"
+#include "../TripleQueue/TripleQueue.cu"
 
 struct QueenPropagation{
 

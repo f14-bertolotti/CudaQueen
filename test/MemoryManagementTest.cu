@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "MemoryManagement.cu"
+#include "../MemoryManagement/MemoryManagement.cu"
 
 ///////////////////////////////////////////////////////////////////
 

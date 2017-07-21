@@ -1,10 +1,10 @@
 #include <stdio.h>
-#include "./Variable.cu"
-#include "./VariableCollection.cu"
-#include "./QueenConstraints.cu"
-#include "./QueenPropagation.cu"
-#include "./TripleQueue.cu"
-#include "./WorkSet.cu"
+#include "./Variable/Variable.cu"
+#include "./VariableCollection/VariableCollection.cu"
+#include "./QueenConstraints/QueenConstraints.cu"
+#include "./QueenPropagation/QueenPropagation.cu"
+#include "./TripleQueue/TripleQueue.cu"
+#include "./WorkSet/WorkSet.cu"
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
