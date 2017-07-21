@@ -1,0 +1,12 @@
+make make2 && cuda-memcheck ./bin/VTEST
+make[1]: Entering directory '/home/the14th/playground/git-repo/CudaQueen'
+nvcc ./test/Variable2Test.cu -o ./bin/VTEST --std=c++11 -g -G -arch=sm_35 -rdc=true -L/usr/lib/x86_64-linux-gnu/
+make[1]: Leaving directory '/home/the14th/playground/git-repo/CudaQueen'
+[34mWarn[0m::HostMemoryManagement::constructor::ALLOCATION
+[34mWarn[0m::HostVariable::constructor::ALLOCATION
+[34mWarn[0m::DeviceMemoryManagement::setFromToMulti::DYNAMIC CALL OF [37m<<<1,1000>>>[0m FOR 10 ELEMENTS
+[34m1[0m [34m1[0m [34m1[0m [34m1[0m [34m1[0m [34m1[0m [34m1[0m [34m1[0m [34m1[0m [34m1[0m  ::: [31mgrd:-1[0m [31mchd:-1[0m [31mfld:-1[0m sz:10
+[34mWarn[0m::HostVariable::destructor::DELLOCATION
+[34mWarn[0m::HostMemoryManagement::destructor::DELLOCATION
+========= CUDA-MEMCHECK
+========= ERROR SUMMARY: 0 errors

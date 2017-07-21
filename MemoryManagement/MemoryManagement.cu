@@ -15,7 +15,8 @@ struct HostMemoryManagement{
 	bool dbg;
 	
 	__host__ HostMemoryManagement(int,int,int);	//allocate memory
-	__host__ ~HostMemoryManagement();				//free memory
+	__host__ int* getPtr();						//returns pointer to the memory
+	__host__ ~HostMemoryManagement();			//free memory
 };
 
 ///////////////////////////////////////////////////////////////////////
@@ -33,7 +34,10 @@ __host__ HostMemoryManagement::~HostMemoryManagement(){
 	cudaFree(dMem);
 }
 
+///////////////////////////////////////////////////////////////////////
 
+__host__ int* HostMemoryManagement::getPtr()
+	{return dMem;}
 
 ///////////////////////////////////////////////////////////////////////
 ////////////////////////DEVICE SIDE////////////////////////////////////
@@ -72,21 +76,21 @@ struct DeviceMemoryManagement{
 
 ///////////////////////////////////////////////////////////////////////
 
-__device__ DeviceMemoryManagement::DeviceMemoryManagement(){}
+__device__ inline DeviceMemoryManagement::DeviceMemoryManagement(){}
 
 ///////////////////////////////////////////////////////////////////////
 
-__device__ DeviceMemoryManagement::~DeviceMemoryManagement(){}
+__device__ inline DeviceMemoryManagement::~DeviceMemoryManagement(){}
 
 
 ///////////////////////////////////////////////////////////////////////
 
-__device__ DeviceMemoryManagement::DeviceMemoryManagement(int* ptr, int nmt, int nrw, int ncl):
+__device__ inline DeviceMemoryManagement::DeviceMemoryManagement(int* ptr, int nmt, int nrw, int ncl):
 	rowSize(nrw),colSize(ncl),matSize(nmt),dMem(ptr),dbg(true){}
 
 ///////////////////////////////////////////////////////////////////////
 
-__device__ void DeviceMemoryManagement::init(int* ptr, int nmt, int nrw, int ncl){
+__device__ inline void DeviceMemoryManagement::init(int* ptr, int nmt, int nrw, int ncl){
 	dMem = ptr;
 	rowSize = nrw;
 	colSize = ncl;
@@ -96,7 +100,7 @@ __device__ void DeviceMemoryManagement::init(int* ptr, int nmt, int nrw, int ncl
 
 ///////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceMemoryManagement::get(int t, int i, int j){
+__device__ inline int DeviceMemoryManagement::get(int t, int i, int j){
 	if(i < 0 || j < 0 || i > rowSize-1 || j > colSize-1 || t < 0 || t > matSize-1){
 		printf("\033[31mError\033[0m::DeviceMemoryManagement::get::INDEX OUT OF BOUND\n");
 		return -1;
@@ -106,7 +110,7 @@ __device__ int DeviceMemoryManagement::get(int t, int i, int j){
 
 ///////////////////////////////////////////////////////////////////////
 
-__device__ void DeviceMemoryManagement::print(){
+__device__ inline void DeviceMemoryManagement::print(){
 	for(int t = 0; t < matSize; ++t){
 		for(int i = 0; i < rowSize; ++i){
 			for (int j = 0; j < colSize; ++j){
@@ -118,7 +122,7 @@ __device__ void DeviceMemoryManagement::print(){
 
 ///////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceMemoryManagement::setSingle(int t,int i,int j,int value){
+__device__ inline int DeviceMemoryManagement::setSingle(int t,int i,int j,int value){
 	if(i < 0 || j < 0 || i > rowSize-1 || j > colSize-1 || t < 0 || t > matSize-1){
 		printf("\033[31mError\033[0m::DeviceMemoryManagement::setSingle::INDEX OUT OF BOUND\n");
 		return -1;
@@ -130,7 +134,7 @@ __device__ int DeviceMemoryManagement::setSingle(int t,int i,int j,int value){
 
 ///////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceMemoryManagement::setRow(int t, int i, int value){
+__device__ inline int DeviceMemoryManagement::setRow(int t, int i, int value){
 	if(i < 0 || i > rowSize-1 || t < 0 || t > matSize-1){
 		printf("\033[31mError\033[0m::DeviceMemoryManagement::setRow::INDEX OUT OF BOUND\n");
 		return -1;
@@ -143,7 +147,7 @@ __device__ int DeviceMemoryManagement::setRow(int t, int i, int value){
 
 ///////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceMemoryManagement::setMatrix(int t, int value){
+__device__ inline int DeviceMemoryManagement::setMatrix(int t, int value){
 	if(t < 0 || t > matSize-1){
 		printf("\033[31mError\033[0m::DeviceMemoryManagement::setMatrix::INDEX OUT OF BOUND\n");
 		return -1;
@@ -157,7 +161,7 @@ __device__ int DeviceMemoryManagement::setMatrix(int t, int value){
 
 ///////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceMemoryManagement::setFromTo(int t0, int i0, int j0, int t1, int i1, int j1, int value){
+__device__ inline int DeviceMemoryManagement::setFromTo(int t0, int i0, int j0, int t1, int i1, int j1, int value){
 	if(i0 < 0 || j0 < 0 || i0 > rowSize-1 || j0 > colSize-1 || t0 < 0 || t0 > matSize-1 || 
 	   i1 < 0 || j1 < 0 || i1 > rowSize-1 || j1 > colSize-1 || t1 < 0 || t1 > matSize-1){
 		printf("\033[31mError\033[0m::DeviceMemoryManagement::setFromTo::INDEX OUT OF BOUND\n");
@@ -177,7 +181,7 @@ __global__ void setExtern(int* dMem, int value, int n){
 		dMem[threadIdx.x + blockIdx.x * blockDim.x] = value;
 }
 
-__device__ int DeviceMemoryManagement::setFromToMulti(int t0, int i0, int j0, int t1, int i1, int j1, int value){
+__device__ inline int DeviceMemoryManagement::setFromToMulti(int t0, int i0, int j0, int t1, int i1, int j1, int value){
 	if(i0 < 0 || j0 < 0 || i0 > rowSize-1 || j0 > colSize-1 || t0 < 0 || t0 > matSize-1 || 
 	   i1 < 0 || j1 < 0 || i1 > rowSize-1 || j1 > colSize-1 || t1 < 0 || t1 > matSize-1){
 		printf("\033[31mError\033[0m::DeviceMemoryManagement::setFromToMulti::INDEX OUT OF BOUND\n");
@@ -200,7 +204,10 @@ __device__ int DeviceMemoryManagement::setFromToMulti(int t0, int i0, int j0, in
 		printf(" FOR %d ELEMENTS\n", numberOfElement);
 	}
 
+	cudaStream_t s;
+	cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
 	setExtern<<<numberOfBlock,numberOfThread>>>(&dMem[rowSize*colSize*t0+i0*colSize+j0],value,numberOfElement);
+	cudaStreamDestroy(s);
 
 	cudaDeviceSynchronize();
 
@@ -214,7 +221,7 @@ __global__ void copyExtern(int* from, int* to, int n, int size){
 		to[threadIdx.x + blockIdx.x * blockDim.x] = from[(threadIdx.x + blockIdx.x * blockDim.x)%size];
 }
 
-__device__ int DeviceMemoryManagement::copyFromToMulti(int what, int from, int to){
+__device__ inline int DeviceMemoryManagement::copyFromToMulti(int what, int from, int to){
 	if(what < 0 || from < 0 || to < 0 || what > matSize-1 || from > matSize-1 || to > matSize-1){
 		printf("\033[31mError\033[0m::DeviceMemoryManagement::copyFromToMulti::INDEX OUT OF BOUND\n");
 		return -1;
@@ -237,9 +244,12 @@ __device__ int DeviceMemoryManagement::copyFromToMulti(int what, int from, int t
 		printf(" FOR %d ELEMENTS\n", numberOfElement);
 	}
 
+	cudaStream_t s;
+	cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
 	copyExtern<<<numberOfBlock,numberOfThread>>>(&dMem[rowSize*colSize*what],
 												 &dMem[rowSize*colSize*from],
 												 numberOfElement,rowSize*colSize);
+	cudaStreamDestroy(s);
 
 	cudaDeviceSynchronize();
 
