@@ -2,8 +2,8 @@
 
 ///////////////////////////////////////////////////////////////////////
 
-__device__ const int nQueen	  = 5;
-__device__ const int nThreads = 5;
+__device__ const int nQueen	  = 10;
+__device__ const int nThreads = 10;
 
 ///////////////////////////////////////////////////////////////////////
 
@@ -19,6 +19,11 @@ __global__ void preparePropagation(int*,int);
 __global__ void propagation(int*,int);
 __global__ void init(int*);
 
+__global__ void propagation2(int*,int);
+__global__ void propagation3(int*,int);
+
+
+
 ///////////////////////////////////////////////////////////////////////
 
 int main(){
@@ -31,7 +36,19 @@ int main(){
 
 	init<<<1,1>>>(DeviceQueenMem);
 
-	preparePropagation<<<1,nThreads>>>(DeviceQueenMem,0);
+/*	preparePropagation<<<1,nThreads>>>(DeviceQueenMem,4);
+	propagation2<<<int((nThreads*nQueen*nQueen)/1000)+1,1000>>>(DeviceQueenMem,4);
+	printAll<<<1,1>>>(DeviceQueenMem);
+	cudaDeviceSynchronize();
+*/
+
+	preparePropagation<<<1,nThreads>>>(DeviceQueenMem,4);
+	propagation3<<<1,nQueen*nQueen>>>(DeviceQueenMem,4);
+	printAll<<<1,1>>>(DeviceQueenMem);
+	cudaDeviceSynchronize();
+
+
+/*	preparePropagation<<<1,nThreads>>>(DeviceQueenMem,0);
 	propagation<<<1,nThreads>>>(DeviceQueenMem,0);
 	printAll<<<1,1>>>(DeviceQueenMem);
 	cudaDeviceSynchronize();
@@ -65,7 +82,7 @@ int main(){
 
 	parallelAllDiffs<<<1,nThreads>>>(DeviceQueenMem,1);
 	parallelDiagConstr<<<1,nThreads*4>>>(DeviceQueenMem,1);
-
+*/
 	free(HostQueenMem);
 	cudaFree(DeviceQueenMem);
 	return 0;
@@ -259,7 +276,7 @@ __global__ void preparePropagation(int* Mem, int i){
 
 ///////////////////////////////////////////////////////////////////////
 
-__global__ void propagation(int* Mem,int var){
+__global__ void propagation(int* Mem, int var){
 
 	if(get(Mem,threadIdx.x,var,threadIdx.x)==1){
 
@@ -295,3 +312,40 @@ __global__ void propagation(int* Mem,int var){
 }
 
 ///////////////////////////////////////////////////////////////////////
+
+__global__ void propagation2(int* Mem, int var){
+	int col = int((threadIdx.x + blockIdx.x * blockDim.x % (nQueen * nQueen))%nQueen);
+	int row = int(((threadIdx.x + blockIdx.x * blockDim.x % (nQueen * nQueen))/nQueen) % nQueen);
+	int mat = int((threadIdx.x + blockIdx.x * blockDim.x) / (nQueen * nQueen));
+
+
+	if(mat < nQueen){
+		if(row != var && mat == col)
+			decrement(Mem,mat,row,col);
+		
+		if(row != var && col == row && col+mat-var < nQueen && col+mat-var >= 0)
+			decrement(Mem,mat,row,col + mat-var);
+
+		if(row != var && nQueen-col == row && col-(nQueen-mat)+var < nQueen && col-(nQueen-mat)+var >= 0)
+			decrement(Mem,mat,row,col-(nQueen-mat)+var);
+	}
+
+}
+
+///////////////////////////////////////////////////////////////////////
+
+__global__ void propagation3(int* Mem, int var){
+	int col = int((threadIdx.x + blockIdx.x * blockDim.x % (nQueen * nQueen))%nQueen);
+	int row = int(((threadIdx.x + blockIdx.x * blockDim.x % (nQueen * nQueen))/nQueen) % nQueen);
+
+	for(int mat = 0; mat < nQueen; ++mat){
+		if(row != var && mat == col)
+			decrement(Mem,mat,row,col);
+		
+		if(row != var && col == row && col+mat-var < nQueen && col+mat-var >= 0)
+			decrement(Mem,mat,row,col + mat-var);
+
+		if(row != var && nQueen-col == row && col-(nQueen-mat)+var < nQueen && col-(nQueen-mat)+var >= 0)
+			decrement(Mem,mat,row,col-(nQueen-mat)+var);
+	}
+}
