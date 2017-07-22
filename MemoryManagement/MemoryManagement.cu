@@ -70,8 +70,13 @@ struct DeviceMemoryManagement{
 	//////////////MULTI THREAD//////////////
 	__device__ int setFromToMulti(int,int,int,int,int,int,int);			//returns 0 if from-to setting goes ok, otherwise -1
 																		//take 3 index for starting element and 3 for end element
-	__device__ int copyFromToMulti(int,int,int);						//take index of copy matrix, index of start matrix of copy
+	__device__ int setMatrixFromToMultiLess(int,int,int);					//returns 0 of from-to settings goes ok, otherwise -1
+																		//take index for start matrix and index for end matrix
+	__device__ int copyMatrixFromToMulti(int,int,int);					//take index of copy matrix, index of start matrix of copy
 																		//and index of end matrix of copy, returns 0 if ok, otherwise -1
+	__device__ int copyMatrixFromToMultiLess(int,int,int);				//take index of copy matrix, index of start matrix of copy
+																		//and index of end matrix of copy, returns 0 if ok, otherwise -1
+																		//uses less thread
 };
 
 ///////////////////////////////////////////////////////////////////////
@@ -216,14 +221,56 @@ __device__ inline int DeviceMemoryManagement::setFromToMulti(int t0, int i0, int
 
 ///////////////////////////////////////////////////////////////////////
 
+__device__ inline int DeviceMemoryManagement::setMatrixFromToMultiLess(int from, int to, int value){
+	if(from < 0 || to < 0 || from > matSize-1 || to > matSize-1){
+		printf("\033[31mError\033[0m::DeviceMemoryManagement::setMatrixFromToMultiLess::INDEX OUT OF BOUND\n");
+		return -1;
+	}
+
+	int numberOfElement = (rowSize*colSize*(to+1)) - (rowSize*colSize*from);
+	if(numberOfElement <= 0){
+		if(dbg)
+			printf("\033[34mWarn\033[0m::setMatrixFromToMultiLess::setFromMulti::TO < FROM\n");
+		return 0;
+	}
+
+	int numberOfThread = 1000;
+	int numberOfBlock = int(numberOfElement/1000)+1;
+
+	if(dbg){
+		printf("\033[34mWarn\033[0m::setMatrixFromToMultiLess::");
+		printf("setMatrixFromToMultiLess::DYNAMIC CALL OF \033[37m<<<%d,%d>>>\033[0m",numberOfBlock,numberOfThread);
+		printf(" FOR %d ELEMENTS\n", numberOfElement);
+	}
+
+	for(int i = 0; i < to+1-from; ++i){
+		if(dbg){
+			printf("\033[34mWarn\033[0m::setMatrixFromToMultiLess::");
+			printf("setMatrixFromToMultiLess::DYNAMIC CALL OF \033[37m<<<%d,%d>>>\033[0m",numberOfBlock,numberOfThread);
+			printf(" FOR %d ELEMENTS\n", numberOfElement);
+		}
+
+		cudaStream_t s;
+		cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
+		setExtern<<<numberOfBlock,numberOfThread>>>(&dMem[rowSize*colSize*(from+i)],value,rowSize*colSize);
+		cudaStreamDestroy(s);
+	}
+
+	cudaDeviceSynchronize();
+
+	return 0;
+}
+
+///////////////////////////////////////////////////////////////////////
+
 __global__ void copyExtern(int* from, int* to, int n, int size){
 	if(threadIdx.x + blockIdx.x * blockDim.x < n)
 		to[threadIdx.x + blockIdx.x * blockDim.x] = from[(threadIdx.x + blockIdx.x * blockDim.x)%size];
 }
 
-__device__ inline int DeviceMemoryManagement::copyFromToMulti(int what, int from, int to){
+__device__ inline int DeviceMemoryManagement::copyMatrixFromToMulti(int what, int from, int to){
 	if(what < 0 || from < 0 || to < 0 || what > matSize-1 || from > matSize-1 || to > matSize-1){
-		printf("\033[31mError\033[0m::DeviceMemoryManagement::copyFromToMulti::INDEX OUT OF BOUND\n");
+		printf("\033[31mError\033[0m::DeviceMemoryManagement::copyMatrixFromToMulti::INDEX OUT OF BOUND\n");
 		return -1;
 	}
 
@@ -240,7 +287,7 @@ __device__ inline int DeviceMemoryManagement::copyFromToMulti(int what, int from
 
 	if(dbg){
 		printf("\033[34mWarn\033[0m::DeviceMemoryManagement::");
-		printf("setFromToMulti::DYNAMIC CALL OF \033[37m<<<%d,%d>>>\033[0m",numberOfBlock,numberOfThread);
+		printf("copyMatrixFromToMulti::DYNAMIC CALL OF \033[37m<<<%d,%d>>>\033[0m",numberOfBlock,numberOfThread);
 		printf(" FOR %d ELEMENTS\n", numberOfElement);
 	}
 
@@ -257,3 +304,42 @@ __device__ inline int DeviceMemoryManagement::copyFromToMulti(int what, int from
 }
 
 ///////////////////////////////////////////////////////////////////////
+
+__device__ inline int DeviceMemoryManagement::copyMatrixFromToMultiLess(int what, int from, int to){
+	if(what < 0 || from < 0 || to < 0 || what > matSize-1 || from > matSize-1 || to > matSize-1){
+		printf("\033[31mError\033[0m::DeviceMemoryManagement::copyMatrixFromToMultiLess::INDEX OUT OF BOUND\n");
+		return -1;
+	}
+
+	int numberOfThread = 0;
+	int numberOfBlock = 0;
+	int numberOfElement = (rowSize*colSize*(to+1)) - (rowSize*colSize*from);
+
+	if(numberOfElement <= 0){
+		if(dbg)
+			printf("\033[34mWarn\033[0m::DeviceMemoryManagement::copyMatrixFromToMultiLess::TO < FROM\n");
+		return 0;
+	}
+
+	numberOfBlock = int(rowSize*colSize/1000)+1;
+	numberOfThread = 1000;
+
+	for(int i = 0; i < to+1-from; ++i){
+		if(dbg){
+			printf("\033[34mWarn\033[0m::DeviceMemoryManagement::");
+			printf("copyMatrixFromToMultiLess::DYNAMIC CALL OF \033[37m<<<%d,%d>>>\033[0m",numberOfBlock,numberOfThread);
+			printf(" FOR %d ELEMENTS\n", rowSize * colSize);
+		}
+
+		cudaStream_t s;
+		cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
+		copyExtern<<<numberOfBlock,numberOfThread>>>(&dMem[rowSize*colSize*what],
+													 &dMem[rowSize*colSize*(from+i)],
+													 rowSize * colSize, rowSize*colSize);
+		cudaStreamDestroy(s);
+	}
+
+	cudaDeviceSynchronize();
+
+	return 0;
+}
