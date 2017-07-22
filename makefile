@@ -13,6 +13,9 @@ make1:
 make2:
 	$(NCC) ./test/Variable2Test.cu -o ./bin/VTEST $(NCCFLAGS) $(LIB)
 
+make3:
+	$(NCC) ./test/VariableCollection2Test.cu -o ./bin/VCTEST $(NCCFLAGS) $(LIB)
+
 
 run0-memcheck:
 	make make0 && cuda-memcheck ./bin/RCUDA
@@ -23,15 +26,21 @@ run1-memcheck:
 run2-memcheck:
 	make make2 && cuda-memcheck ./bin/VTEST
 
+run3-memcheck:
+	make make3 && cuda-memcheck ./bin/VCTEST
+
 
 run0: 
 	make make0 && ./bin/RCUDA
 
 run1: 
-	make make0 && ./bin/RMEMTEST
+	make make1 && ./bin/RMEMTEST
 
 run2:
-	cuda-memcheck ./bin/VTEST
+	make make2 && ./bin/VTEST
+
+run3:
+	make make3 && ./bin/VCTEST
 
 
 clean0:
@@ -43,4 +52,8 @@ clean1:
 clean2:
 	rm ./bin/VTEST
 
-all: make0
+clean3:
+	rm ./bin/VCTEST
+
+
+all: make0 make1 make2 make3

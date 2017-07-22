@@ -64,6 +64,7 @@ struct DeviceVariable{
 	__device__ DeviceVariable();			//do nothing
 	__device__ DeviceVariable(int*,int); 	//initialize
 	__device__ void init(int*, int);		//initialize
+	__device__ void init2(int*, int);		//initialize without setting
 	__device__ ~DeviceVariable();			//do nothing
 
 	__device__ int assign(int);			//assign choesen variable and returns 0.
@@ -110,6 +111,19 @@ __device__ inline void DeviceVariable::init(int* dMem, int ds){
 
 	if(fullParallel) deviceMemoryManagement.setFromToMulti(0,0,0,0,0,ds-1,1);
 	else deviceMemoryManagement.setMatrix(0,1);
+}
+
+///////////////////////////////////////////////////////////////////////
+
+__device__ inline void DeviceVariable::init2(int* dMem, int ds){
+	domainSize = ds;
+	deviceMemoryManagement.init(dMem,1,1,ds);
+	domain = dMem;
+	fullParallel = true;
+	ground  = -1;
+	changed = -1;
+	failed  = -1;
+	dbg = true;
 }
 
 ///////////////////////////////////////////////////////////////////////

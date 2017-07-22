@@ -70,7 +70,7 @@ struct DeviceMemoryManagement{
 	//////////////MULTI THREAD//////////////
 	__device__ int setFromToMulti(int,int,int,int,int,int,int);			//returns 0 if from-to setting goes ok, otherwise -1
 																		//take 3 index for starting element and 3 for end element
-	__device__ int setMatrixFromToMultiLess(int,int,int);					//returns 0 of from-to settings goes ok, otherwise -1
+	__device__ int setMatrixFromToMultiLess(int,int,int);				//returns 0 of from-to settings goes ok, otherwise -1
 																		//take index for start matrix and index for end matrix
 	__device__ int copyMatrixFromToMulti(int,int,int);					//take index of copy matrix, index of start matrix of copy
 																		//and index of end matrix of copy, returns 0 if ok, otherwise -1
