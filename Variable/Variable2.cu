@@ -12,27 +12,24 @@ struct HostVariable{
 	int DomainSize;					//variable size (cardinality)
 	bool dbg;						//verbose
 
-	HostMemoryManagement hostMemoryManagement;
-									//obj that manage the memory
-									//also allocate the memory
-
 	__host__ HostVariable(int); 	//allocate memory using HostMemoryMangement
 	__host__ int* getPtr();			//return memory ptr;
-	__host__ ~HostVariable();		//do nothing just dbg print
+	__host__ ~HostVariable();		//deallocate
 };
 
 ///////////////////////////////////////////////////////////////////////
 
 __host__ HostVariable::HostVariable(int dm):
-	DomainSize(dm),dbg(true),hostMemoryManagement(1,1,DomainSize){
+	DomainSize(dm),dbg(true){
 	if(dbg)printf("\033[34mWarn\033[0m::HostVariable::constructor::ALLOCATION\n");
-	dMem = hostMemoryManagement.getPtr();
+	cudaMalloc((void**)&dMem,sizeof(int)*DomainSize);
 }
 
 ///////////////////////////////////////////////////////////////////////
 
 __host__ HostVariable::~HostVariable(){
 	if(dbg)printf("\033[34mWarn\033[0m::HostVariable::destructor::DELLOCATION\n");
+	cudaFree(dMem);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -262,9 +259,10 @@ __device__ inline void DeviceVariable::checkFailed(){
 
 __device__ inline void DeviceVariable::print(){
 	for (int i = 0; i < domainSize; ++i){
-		if(domain[i] <= 0)
+		if(domain[i] == 0)
 			printf("%d ", domain[i]);
-		else printf("\033[34m%d\033[0m ", domain[i]);
+		else if(domain[i] > 0)printf("\033[34m%d\033[0m ", domain[i]);
+		else if(domain[i] < 0)printf("\033[31m%d\033[0m ", -domain[i]);
 	}
 
 	if(ground >= 0)printf(" ::: \033[32mgrd:%d\033[0m ", ground);

@@ -16,6 +16,12 @@ make2:
 make3:
 	$(NCC) ./test/VariableCollection2Test.cu -o ./bin/VCTEST $(NCCFLAGS) $(LIB)
 
+make4:
+	$(NCC) ./test/TripleQueue2Test.cu -o ./bin/QTEST $(NCCFLAGS) $(LIB)
+
+make5:
+	$(NCC) ./test/QueenPropagation2Test.cu -o ./bin/QPTEST $(NCCFLAGS) $(LIB)
+
 
 run0-memcheck:
 	make make0 && cuda-memcheck ./bin/RCUDA
@@ -28,6 +34,12 @@ run2-memcheck:
 
 run3-memcheck:
 	make make3 && cuda-memcheck ./bin/VCTEST
+
+run4-memcheck:
+	make make4 && cuda-memcheck ./bin/QTEST
+
+run5-memcheck:
+	make make5 && cuda-memcheck ./bin/QPTEST
 
 
 run0: 
@@ -42,6 +54,12 @@ run2:
 run3:
 	make make3 && ./bin/VCTEST
 
+run4:
+	make make4 && ./bin/QTEST
+
+run5:
+	make make5 && ./bin/QPTEST
+
 
 clean0:
 	rm ./bin/RCUDA
@@ -55,5 +73,11 @@ clean2:
 clean3:
 	rm ./bin/VCTEST
 
+clean4:
+	rm ./bin/QTEST
 
-all: make0 make1 make2 make3
+clean5:
+	rm ./bin/QPTEST
+
+
+all: make0 make1 make2 make3 make4 make5
