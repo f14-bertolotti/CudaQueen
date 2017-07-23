@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include "../QueenPropagation/QueenPropagation2.cu"
 #include "../VariableCollection/VariableCollection2.cu"
+#include "../QueenConstraints/QueenConstraints2.cu"
 
 __device__ DeviceVariableCollection deviceVariableCollection;
 __device__ DeviceQueenPropagation deviceQueenPropagation;
+__device__ DeviceQueenConstraints deviceQueenConstraints;
 
 __global__ void init(int*,DeviceVariable*,int,int*,Triple*);
 __global__ void testSequential();
@@ -69,13 +71,6 @@ __global__ void testParallel(){
 		deviceQueenPropagation.nextAssign(deviceVariableCollection,0));
 	deviceVariableCollection.print();
 
-	deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection);
-	deviceVariableCollection.print();
-
-	deviceQueenPropagation.parallelForwardPropagation(deviceVariableCollection,0,
-		deviceQueenPropagation.nextAssign(deviceVariableCollection,0));
-	deviceVariableCollection.print();
-
 	deviceQueenPropagation.parallelForwardPropagation(deviceVariableCollection,1,
 		deviceQueenPropagation.nextAssign(deviceVariableCollection,1));
 	deviceVariableCollection.print();
@@ -95,5 +90,6 @@ __global__ void testParallel(){
 		deviceQueenPropagation.nextAssign(deviceVariableCollection,3));
 	deviceVariableCollection.print();
 
-
+	if(deviceQueenConstraints.parallelConstraints(deviceVariableCollection))printf("ok\n");
+	else printf("not ok\n");
 }
