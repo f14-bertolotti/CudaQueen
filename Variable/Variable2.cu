@@ -163,7 +163,7 @@ __device__ inline int DeviceVariable::assign(int value){
 	else{
 		cudaStream_t s;
 		cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
-		externAssignParallel<<<1,domainSize>>>(domain, domainSize, value);
+		externAssignParallel<<<1,domainSize,0,s>>>(domain, domainSize, value);
 		cudaStreamDestroy(s);
 		cudaDeviceSynchronize();
 	} 
@@ -260,7 +260,7 @@ __device__ inline void DeviceVariable::checkFailed(){
 __device__ inline void DeviceVariable::print(){
 	for (int i = 0; i < domainSize; ++i){
 		if(domain[i] == 0)
-			printf("%d ", domain[i]);
+			printf("\033[31m%d\033[0m ", domain[i]);
 		else if(domain[i] > 0)printf("\033[34m%d\033[0m ", domain[i]);
 		else if(domain[i] < 0)printf("\033[31m%d\033[0m ", -domain[i]);
 	}

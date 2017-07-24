@@ -12,6 +12,8 @@ struct DeviceQueenConstraints{
 	__device__ bool checkColConstraint(DeviceVariableCollection&);		//specific implementation
 	__device__ bool checkRDiagConstraint(DeviceVariableCollection&);	//for queen problem
 	__device__ bool checkLDiagConstraint(DeviceVariableCollection&);	//
+																		//
+	__device__ bool solution(DeviceVariableCollection&);				//
 
 	//////////////////////////////////////MULTI THREAD//////////////////////////////////////
 
@@ -118,6 +120,12 @@ __device__ bool DeviceQueenConstraints::checkLDiagConstraint(DeviceVariableColle
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
+__device__ bool DeviceQueenConstraints::solution(DeviceVariableCollection& vc){
+	return checkRowConstraint(vc) && checkColConstraint(vc) && checkRDiagConstraint(vc) && checkLDiagConstraint(vc);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+
 __device__ bool okDiags = true;
 __global__ void externParallelDiagConstr(int* Mem, int nQueen){
 	int sum,i,j,what;
@@ -207,8 +215,13 @@ __global__ void externParallelAllDiffs(int* Mem, int nQueen){
 ///////////////////////////////////////////////////////////////////////
 
 __device__ bool DeviceQueenConstraints::parallelConstraints(DeviceVariableCollection& vc){
-	externParallelAllDiffs<<<1,vc.nQueen>>>(vc.deviceMemoryManagement.dMem,vc.nQueen);
-	externParallelDiagConstr<<<1,vc.nQueen*4>>>(vc.deviceMemoryManagement.dMem,vc.nQueen);
+	cudaStream_t s1,s2;
+	cudaStreamCreateWithFlags(&s1, cudaStreamNonBlocking);
+	cudaStreamCreateWithFlags(&s2, cudaStreamNonBlocking);
+	externParallelAllDiffs<<<1,vc.nQueen,0,s1>>>(vc.deviceMemoryManagement.dMem,vc.nQueen);
+	cudaStreamDestroy(s1);
+	externParallelDiagConstr<<<1,vc.nQueen*4,0,s2>>>(vc.deviceMemoryManagement.dMem,vc.nQueen);
+	cudaStreamDestroy(s2);
 	cudaDeviceSynchronize();
 	bool res = okAllDiffs && okDiags;
 	okAllDiffs = true;

@@ -22,43 +22,61 @@ make4:
 make5:
 	$(NCC) ./test/QueenPropagation2Test.cu -o ./bin/QPTEST $(NCCFLAGS) $(LIB)
 
+make6:
+	$(NCC) ./CUDAqueen2.cu -o ./bin/RCUDA2 $(NCCFLAGS) $(LIB)
+
+make7:
+	$(NCC) ./test/WorkSet2Test.cu -o ./bin/WSTEST $(NCCFLAGS) $(LIB)
+
 
 run0-memcheck:
-	make make0 && cuda-memcheck ./bin/RCUDA
+	cuda-memcheck ./bin/RCUDA
 
 run1-memcheck:
-	make make1 && cuda-memcheck ./bin/RMEMTEST
+	cuda-memcheck ./bin/RMEMTEST
 
 run2-memcheck:
-	make make2 && cuda-memcheck ./bin/VTEST
+	cuda-memcheck ./bin/VTEST
 
 run3-memcheck:
-	make make3 && cuda-memcheck ./bin/VCTEST
+	cuda-memcheck ./bin/VCTEST
 
 run4-memcheck:
-	make make4 && cuda-memcheck ./bin/QTEST
+	cuda-memcheck ./bin/QTEST
 
 run5-memcheck:
-	make make5 && cuda-memcheck ./bin/QPTEST
+	cuda-memcheck ./bin/QPTEST
+
+run6-memcheck:
+	cuda-memcheck ./bin/RCUDA2
+
+run7-memcheck:
+	cuda-memcheck ./bin/WSTEST
 
 
 run0: 
-	make make0 && ./bin/RCUDA
+	./bin/RCUDA
 
 run1: 
-	make make1 && ./bin/RMEMTEST
+	./bin/RMEMTEST
 
 run2:
-	make make2 && ./bin/VTEST
+	./bin/VTEST
 
 run3:
-	make make3 && ./bin/VCTEST
+	./bin/VCTEST
 
 run4:
-	make make4 && ./bin/QTEST
+	./bin/QTEST
 
 run5:
-	make make5 && ./bin/QPTEST
+	./bin/QPTEST
+
+run6: 
+	./bin/RCUDA2
+
+run7: 
+	./bin/WSTEST
 
 
 clean0:
@@ -79,5 +97,11 @@ clean4:
 clean5:
 	rm ./bin/QPTEST
 
+clean6:
+	rm ./bin/RCUDA2
 
-all: make0 make1 make2 make3 make4 make5
+clean7:
+	rm ./bin/WSTEST
+
+
+all: make0 make1 make2 make3 make4 make5 make6 make7

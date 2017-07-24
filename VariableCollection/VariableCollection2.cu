@@ -58,6 +58,7 @@ struct DeviceVariableCollection{
 	__device__ DeviceVariableCollection();											//do nothing
 	__device__ DeviceVariableCollection(DeviceVariable*,Triple*, int*,int*,int);	//initialize
 	__device__ void init(DeviceVariable*,Triple*,int*,int*,int);					//initialize
+	__device__ void init2(DeviceVariable*,Triple*,int*,int*,int);					//initialize
 	__device__ ~DeviceVariableCollection();											//do nothing
 
 	__device__ bool isGround();			//check if every variable is not failed
@@ -97,6 +98,22 @@ __device__ void DeviceVariableCollection::init(DeviceVariable* dv,Triple* q, int
 	deviceMemoryManagement.init(vm,1,nQueen,nQueen);
 	if(fullParallel)deviceMemoryManagement.setMatrixFromToMultiLess(0,0,1);
 	else deviceMemoryManagement.setMatrix(0,1);
+	for (int i = 0; i < nQueen; ++i){
+		variables[i].init2(&vm[nQueen*i],nQueen);
+		lastValues[i]=0;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////
+
+__device__ void DeviceVariableCollection::init2(DeviceVariable* dv,Triple* q, int* vm, int* lv, int nq){
+	dbg = true;
+	fullParallel = true;
+	nQueen = nq;
+	variables = dv;
+	lastValues = lv;
+	deviceQueue.init(q,nq);
+	deviceMemoryManagement.init(vm,1,nQueen,nQueen);
 	for (int i = 0; i < nQueen; ++i){
 		variables[i].init2(&vm[nQueen*i],nQueen);
 		lastValues[i]=0;

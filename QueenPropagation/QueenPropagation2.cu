@@ -41,7 +41,7 @@ __device__ int DeviceQueenPropagation::nextAssign(DeviceVariableCollection& vc, 
 	}
 
 	if(vc.lastValues[var] >= vc.nQueen){
-		if(vc.dbg)printf("\033[31mWarn\033[0m::DeviceQueenPropagation::nextAssign::VALUE OUT OF BOUND\n");
+		if(vc.dbg)printf("\033[34mWarn\033[0m::DeviceQueenPropagation::nextAssign::VALUE OUT OF BOUND\n");
 		return -1;
 	}
 
@@ -216,35 +216,16 @@ __global__ void externPropagation(DeviceVariableCollection& vc, int var, int val
 	int col = int((threadIdx.x + blockIdx.x * blockDim.x % (nQueen * nQueen))%nQueen);
 	int row = int(((threadIdx.x + blockIdx.x * blockDim.x % (nQueen * nQueen))/nQueen) % nQueen);
 
-	if(row != var && val == col){
-		if(vc.deviceMemoryManagement.dMem[nQueen*row+col] > 0 &&
-		   vc.deviceMemoryManagement.dMem[nQueen*row+col] + (delta) <= 0) 
-				vc.variables[row].changed = 1;
-		vc.deviceMemoryManagement.dMem[nQueen*row+col]+=delta;
-	}
+	if(row != var && val == col)
+		vc.variables[row].addTo(col,delta);
 	
-	if(row != var && col == row && col+val-var < nQueen && col+val-var >= 0){
-		if(vc.deviceMemoryManagement.dMem[nQueen*row+col+val-var] > 0 &&
-		   vc.deviceMemoryManagement.dMem[nQueen*row+col+val-var] + (delta) <= 0) 
-				vc.variables[row].changed = 1;
-		vc.deviceMemoryManagement.dMem[nQueen*row+col+val-var]+=delta;
-	}
+	
+	if(row != var && col == row && col+val-var < nQueen && col+val-var >= 0)
+		vc.variables[row].addTo(col+val-var,delta);
+	
 
-	if(row != var && nQueen-col == row && col-(nQueen-val)+var < nQueen && col-(nQueen-val)+var >= 0){
-		if(vc.deviceMemoryManagement.dMem[nQueen*row+col+val-var] > 0 &&
-		   vc.deviceMemoryManagement.dMem[nQueen*row+col+val-var] + (delta) <= 0) 
-				vc.variables[row].changed = 1;
-		vc.deviceMemoryManagement.dMem[nQueen*row+col-(nQueen-val)+var]+=delta;
-	}
-
-	__syncthreads();
-
-	if(threadIdx.x < nQueen)
-		vc.variables[threadIdx.x].checkGround();
-	if(threadIdx.x >= 2*nQueen && threadIdx.x < 2*nQueen);
-		vc.variables[threadIdx.x%nQueen].checkFailed();
-	if(threadIdx.x == 3*nQueen)
-		if(delta < 0)vc.deviceQueue.add(var,val,6);
+	if(row != var && nQueen-col == row && col-(nQueen-val)+var < nQueen && col-(nQueen-val)+var >= 0)
+		vc.variables[row].addTo(col-(nQueen-val)+var,delta);
 }
 
 __device__ int DeviceQueenPropagation::parallelPropagation(DeviceVariableCollection& vc,int var,int val,int delta){
@@ -257,8 +238,11 @@ __device__ int DeviceQueenPropagation::parallelPropagation(DeviceVariableCollect
 		printf("\033[31mError\033[0m::QueenPropagation::parallelPropagation::VARIABLE NOT GROUND\n");
 		return -1;
 	}
-	
-	externPropagation<<<1,vc.nQueen*vc.nQueen>>>(vc,var,val,vc.nQueen,delta);
+	cudaStream_t s;
+	cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
+	externPropagation<<<1,vc.nQueen*vc.nQueen,0,s>>>(vc,var,val,vc.nQueen,delta);
+	cudaStreamDestroy(s);
+	if(delta < 0)vc.deviceQueue.add(var,val,6);
 	cudaDeviceSynchronize();
 
 	return 0;
@@ -324,12 +308,16 @@ __device__ int DeviceQueenPropagation::parallelUndoForwardPropagation(DeviceVari
 
 	vc.deviceQueue.pop();
 	while(vc.deviceQueue.front()->cs!=5){
-		externPropagation<<<1,vc.nQueen*vc.nQueen>>>(vc,vc.deviceQueue.front()->var,vc.deviceQueue.front()->val,vc.nQueen,+1);
+		cudaStream_t s;
+		cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
+		externPropagation<<<1,vc.nQueen*vc.nQueen,0,s>>>(vc,vc.deviceQueue.front()->var,vc.deviceQueue.front()->val,vc.nQueen,+1);
+		cudaStreamDestroy(s);
 		vc.deviceQueue.pop();
 		if(vc.deviceQueue.empty())break;
 	}
-	vc.variables[t1].undoAssign(t2);
 	cudaDeviceSynchronize();
+
+	vc.variables[t1].undoAssign(t2);
 
 	return 0;
 }
