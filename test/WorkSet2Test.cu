@@ -12,7 +12,7 @@ __global__ void test();
 
 int main(){
 
-	HostWorkSet hostWorkSet(5,10);
+	HostWorkSet hostWorkSet(8,11);
 	init<<<1,1>>>(hostWorkSet.deviceVariableCollection,
 				  hostWorkSet.deviceVariable,
 				  hostWorkSet.variablesMem,
@@ -47,6 +47,8 @@ __global__ void test(){
     assignedValue = deviceQueenPropagation.nextAssign(deviceWorkSet.deviceVariableCollection[0],0);
     deviceQueenPropagation.parallelForwardPropagation(deviceWorkSet.deviceVariableCollection[0],0,assignedValue);
     deviceWorkSet.expand(0,1);
+    deviceWorkSet.expand(1,2);
+    deviceWorkSet.expand(10,3);
 
 	deviceWorkSet.print();
 }

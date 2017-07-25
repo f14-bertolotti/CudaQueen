@@ -159,7 +159,7 @@ __device__ inline int DeviceVariable::assign(int value){
 		return -1;
 	}
 
-	if(fullParallel)externAssignSequential(domain, domainSize, value);
+	if(!fullParallel)externAssignSequential(domain, domainSize, value);
 	else{
 		cudaStream_t s;
 		cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
@@ -198,7 +198,7 @@ __device__ inline int DeviceVariable::undoAssign(int value){
 		return -1;
 	}
 
-	if(fullParallel)externUndoAssignSequential(domain, domainSize, value);
+	if(!fullParallel)externUndoAssignSequential(domain, domainSize, value);
 	else{
 		cudaStream_t s;
 		cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);

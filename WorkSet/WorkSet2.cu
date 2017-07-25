@@ -190,67 +190,74 @@ __device__ DeviceWorkSet::~DeviceWorkSet(){}
 ///////////////////////////////////////////////////////////////////////
 
 __device__ void DeviceWorkSet::print(){
-
-	for(int i = 0; i < nVariableCollection; ++i)
+	for(int i = 0; i < nVariableCollection; ++i){
+		printf("------[%d]------\n", i);
 		deviceVariableCollection[i].print();
-
+	}
+	printf("count : %d\n", count);
 }
 
 ///////////////////////////////////////////////////////////////////////
 
-__global__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int level, int nValues, int nQueen){
+__global__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, int level, int nValues, int nQueen){
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
 
 	DeviceQueenPropagation deviceQueenPropagation;
 
 	if(index < nQueen*nQueen*3*nValues){
-		deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*(who+1)+index].var = 
+		deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*count+index].var = 
 			deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*who+(index%(nQueen*nQueen*3))].var;
-		deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*(who+1)+index].val = 
+		deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*count+index].val = 
 			deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*who+(index%(nQueen*nQueen*3))].val;
-		deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*(who+1)+index].cs = 
+		deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*count+index].cs = 
 			deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*who+(index%(nQueen*nQueen*3))].cs;
 	}
 
-	if(index < nQueen*nQueen*nValues)
-		deviceWorkSet.variablesMem[nQueen*nQueen*(who+1)+index] = 
+	if(index < nQueen*nQueen*nValues){
+		deviceWorkSet.variablesMem[nQueen*nQueen*count+index] = 
 			deviceWorkSet.variablesMem[nQueen*nQueen*who+(index%(nQueen*nQueen))];
+	}
 
-	if(index < nQueen * nValues)
-		deviceWorkSet.lastValuesMem[nQueen*(who+1)+index] = 
-			deviceWorkSet.variablesMem[nQueen*who+(index%(nQueen))];
+	if(index < nQueen * nValues){
+		deviceWorkSet.lastValuesMem[nQueen*count+index] = 
+			deviceWorkSet.lastValuesMem[nQueen*who+(index%nQueen)];
+	}
 
-	if(index < nValues)
-		deviceWorkSet.deviceVariableCollection[who+index+1].deviceQueue.count =
+	if(index < nValues){
+		deviceWorkSet.deviceVariableCollection[index+count].deviceQueue.count =
 			deviceWorkSet.deviceVariableCollection[who].deviceQueue.count;
+	}
 
 	__syncthreads();
 
 	int j = 0;
-	if(index == 1)
-		for(int i = 0; i < nQueen; ++i){
-			if(deviceWorkSet.deviceVariableCollection[who+1+j].variables[level].domain[i] == 1){
+	if(index == 1){
+		for(int i = 0; i < nQueen && j<nValues; ++i){
+			if(deviceWorkSet.deviceVariableCollection[count+j].variables[level].domain[i] == 1){
 				cudaStream_t s;
 				cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
-				externAssignParallel<<<1,nQueen,0,s>>>(deviceWorkSet.deviceVariableCollection[who+1+j].variables[level].domain,nQueen,i);
-				deviceWorkSet.deviceVariableCollection[who+1+j].variables[level].ground = i;
+				externAssignParallel<<<1,nQueen,0,s>>>(deviceWorkSet.deviceVariableCollection[count+j].variables[level].domain,nQueen,i);
+				deviceWorkSet.deviceVariableCollection[count+j].variables[level].ground = i;
+				deviceWorkSet.deviceVariableCollection[count+j].lastValues[level] = i+1;
 				cudaStreamDestroy(s);
 				++j;
 			}
 		}
+	}
 
 	__syncthreads();
 
-	if(index < nValues)
+	if(index < nValues){
 		deviceQueenPropagation.parallelForwardPropagation(
-			deviceWorkSet.deviceVariableCollection[who+index+1],
+			deviceWorkSet.deviceVariableCollection[index+count],
 			level,
-			deviceWorkSet.deviceVariableCollection[who+index+1].variables[level].ground);
+			deviceWorkSet.deviceVariableCollection[index+count].variables[level].ground);
+	}
 }
 
 __device__ int DeviceWorkSet::expand(int who, int level){
 
-	if(who < 0 || who > nVariableCollection){
+	if(who < 0 || who >= count){
 		printf("\033[31mError\033[0m::DeviceWorkSet::expand::VARIABLE COLLECTION INDEX OUT OF BOUND\n");
 		return -1;
 	}
@@ -275,13 +282,15 @@ __device__ int DeviceWorkSet::expand(int who, int level){
 		return 0;
 	}
 
+	int temp = 0;
 	while(atomicCAS(&lockCount,0,1)==1){}
+	temp = count;
 	count+=nValues;
 	lockCount = 0;
 
 	cudaStream_t s;
 	cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
-	externExpand<<<int(nQueen*nQueen*3*nValues)/1000+1,1000,0,s>>>(*this,who,level,nValues,nQueen);
+	externExpand<<<int(nQueen*nQueen*3*nValues)/1000+1,1000,0,s>>>(*this,who,temp,level,nValues,nQueen);
 	cudaStreamDestroy(s);
 	cudaDeviceSynchronize();
 

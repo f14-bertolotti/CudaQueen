@@ -18,7 +18,7 @@
 	il flusso di esecuzione principale è unico
 */
 
-__device__ const int nQueen=8;
+__device__ const int nQueen=9;
 
 __device__ DeviceQueenConstraints deviceQueenConstraints;
 __device__ DeviceQueenPropagation deviceQueenPropagation;
@@ -33,8 +33,9 @@ __global__ void test(){
 	int nSols = 0;
 	bool done = false;
 	do{
+		//deviceVariableCollection.print();
 		if(level == nQueen){
-			if(deviceQueenConstraints.parallelConstraints(deviceVariableCollection)){
+			if(deviceQueenConstraints.solution(deviceVariableCollection,false)){
 				++nSols;
 			}
 			deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection);
@@ -69,6 +70,8 @@ __global__ void init(DeviceVariable*,Triple*, int*,int*,int);
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 int main(){
+
+    cudaDeviceSetLimit(cudaLimitPrintfFifoSize, sizeof(char)*999999999);
 
 	HostVariableCollection hostVariableCollection(nQueen);
 	init<<<1,1>>>(hostVariableCollection.dMemVariables,

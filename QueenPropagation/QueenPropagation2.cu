@@ -312,10 +312,10 @@ __device__ int DeviceQueenPropagation::parallelUndoForwardPropagation(DeviceVari
 		cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
 		externPropagation<<<1,vc.nQueen*vc.nQueen,0,s>>>(vc,vc.deviceQueue.front()->var,vc.deviceQueue.front()->val,vc.nQueen,+1);
 		cudaStreamDestroy(s);
+		cudaDeviceSynchronize();
 		vc.deviceQueue.pop();
 		if(vc.deviceQueue.empty())break;
 	}
-	cudaDeviceSynchronize();
 
 	vc.variables[t1].undoAssign(t2);
 

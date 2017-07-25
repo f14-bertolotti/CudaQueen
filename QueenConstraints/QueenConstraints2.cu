@@ -13,11 +13,13 @@ struct DeviceQueenConstraints{
 	__device__ bool checkRDiagConstraint(DeviceVariableCollection&);	//for queen problem
 	__device__ bool checkLDiagConstraint(DeviceVariableCollection&);	//
 																		//
-	__device__ bool solution(DeviceVariableCollection&);				//
-
 	//////////////////////////////////////MULTI THREAD//////////////////////////////////////
 
 	__device__ bool parallelConstraints(DeviceVariableCollection&);		//specific for queen problem
+
+	////////////////////////////////////////////////////////////////////////////////////////
+
+	__device__ bool solution(DeviceVariableCollection&,bool);			//check solution	
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -120,14 +122,14 @@ __device__ bool DeviceQueenConstraints::checkLDiagConstraint(DeviceVariableColle
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
-__device__ bool DeviceQueenConstraints::solution(DeviceVariableCollection& vc){
-	return checkRowConstraint(vc) && checkColConstraint(vc) && checkRDiagConstraint(vc) && checkLDiagConstraint(vc);
+__device__ bool DeviceQueenConstraints::solution(DeviceVariableCollection& vc, bool fullParallel){
+	if(fullParallel) return parallelConstraints(vc);
+	else return checkRowConstraint(vc) && checkColConstraint(vc) && checkRDiagConstraint(vc) && checkLDiagConstraint(vc);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
-__device__ bool okDiags = true;
-__global__ void externParallelDiagConstr(int* Mem, int nQueen){
+__global__ void externParallelDiagConstr(int* Mem, int nQueen, bool* okDiags){
 	int sum,i,j,what;
 
 	if(threadIdx.x < nQueen)what = 0;
@@ -145,8 +147,9 @@ __global__ void externParallelDiagConstr(int* Mem, int nQueen){
 				++j;
 				++i;
 			}
-			if(sum > 1)
-				okDiags = false;					
+			if(sum > 1){
+				*okDiags = false;					
+			}
 			break;
 		}
 		case 1:{
@@ -160,8 +163,9 @@ __global__ void externParallelDiagConstr(int* Mem, int nQueen){
 				++i;
 			}
 	
-			if(sum > 1)
-				okDiags = false;
+			if(sum > 1){
+				*okDiags = false;
+			}
 			break;
 		}
 		case 2:{
@@ -175,8 +179,9 @@ __global__ void externParallelDiagConstr(int* Mem, int nQueen){
 				++i;
 			}
 
-			if(sum > 1)
-				okDiags = false;
+			if(sum > 1){
+				*okDiags = false;
+			}
 			break;
 		}
 		case 3:{
@@ -188,28 +193,24 @@ __global__ void externParallelDiagConstr(int* Mem, int nQueen){
 				--j;
 				++i;
 			}
-			if(sum > 1)
-				okDiags = false;
+			if(sum > 1){
+				*okDiags = false;
+			}
 			break;
 		}
 	}
-
-	__syncthreads();
-
 }
 
-__device__ bool okAllDiffs = true;
-__global__ void externParallelAllDiffs(int* Mem, int nQueen){
+__global__ void externParallelAllDiffs(int* Mem, int nQueen, bool* okAllDiffs){
 	int sum = 0;
-	for(int i = 0 ; i < nQueen; ++i)
+	for(int i = 0 ; i < nQueen; ++i){
 		if(Mem[i*nQueen+threadIdx.x]==1)
 			++sum;
+	}
 	
-	if(sum != 1)
-		okAllDiffs = false;
-
-	__syncthreads();
-
+	if(sum != 1){
+		*okAllDiffs = false;
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -218,17 +219,17 @@ __device__ bool DeviceQueenConstraints::parallelConstraints(DeviceVariableCollec
 	cudaStream_t s1,s2;
 	cudaStreamCreateWithFlags(&s1, cudaStreamNonBlocking);
 	cudaStreamCreateWithFlags(&s2, cudaStreamNonBlocking);
-	externParallelAllDiffs<<<1,vc.nQueen,0,s1>>>(vc.deviceMemoryManagement.dMem,vc.nQueen);
+	__shared__	bool res1, res2;
+	res1 = res2 = true;
+	externParallelAllDiffs<<<1,vc.nQueen,0,s1>>>(vc.deviceMemoryManagement.dMem,vc.nQueen,&res1);
 	cudaStreamDestroy(s1);
-	externParallelDiagConstr<<<1,vc.nQueen*4,0,s2>>>(vc.deviceMemoryManagement.dMem,vc.nQueen);
+	externParallelDiagConstr<<<1,vc.nQueen*4,0,s2>>>(vc.deviceMemoryManagement.dMem,vc.nQueen,&res2);
 	cudaStreamDestroy(s2);
 	cudaDeviceSynchronize();
-	bool res = okAllDiffs && okDiags;
-	okAllDiffs = true;
-	okDiags = true;
-	return res;
+	return res1 && res2;;
 }
 
+///////////////////////////////////////////////////////////////////////
 
 
 
