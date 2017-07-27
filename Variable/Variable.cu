@@ -1,6 +1,5 @@
 #pragma once
 #include <stdio.h>
-#include "../MemoryManagement/MemoryManagement.cu"
 
 ///////////////////////////////////////////////////////////////////////
 ////////////////////////HOST SIDE//////////////////////////////////////
@@ -12,7 +11,7 @@ struct HostVariable{
 	int DomainSize;					//variable size (cardinality)
 	bool dbg;						//verbose
 
-	__host__ HostVariable(int); 	//allocate memory using HostMemoryMangement
+	__host__ HostVariable(int); 	//allocate memory
 	__host__ int* getPtr();			//return memory ptr;
 	__host__ ~HostVariable();		//deallocate
 };
@@ -54,14 +53,11 @@ struct DeviceVariable{
 
 	bool fullParallel;	//choose always parallel code execution 
 
-	DeviceMemoryManagement deviceMemoryManagement;	
-						//structure for fast modification
-						//of the memory
-
 	__device__ DeviceVariable();			//do nothing
 	__device__ DeviceVariable(int*,int); 	//initialize
 	__device__ void init(int*, int);		//initialize
 	__device__ void init2(int*, int);		//initialize without setting
+											//assume already setted memory
 	__device__ ~DeviceVariable();			//do nothing
 
 	__device__ int assign(int);			//assign choesen variable and returns 0.
@@ -87,18 +83,15 @@ __device__ inline DeviceVariable::~DeviceVariable(){}
 ///////////////////////////////////////////////////////////////////////
 
 __device__ inline DeviceVariable::DeviceVariable(int* dMem, int ds):
-	domainSize(ds),deviceMemoryManagement(dMem,1,1,domainSize),
-	ground(-1),changed(-1),failed(-1),dbg(true),fullParallel(true),
+	domainSize(ds),ground(-1),changed(-1),failed(-1),dbg(true),fullParallel(true),
 	domain(dMem){
-		if(fullParallel) deviceMemoryManagement.setFromToMulti(0,0,0,0,0,ds-1,1);
-		else deviceMemoryManagement.setMatrix(0,1);
+		for(int i = 0; i < domainSize; ++i)dMem[i]=1;
 	}
 
 ///////////////////////////////////////////////////////////////////////
 
 __device__ inline void DeviceVariable::init(int* dMem, int ds){
 	domainSize = ds;
-	deviceMemoryManagement.init(dMem,1,1,ds);
 	domain = dMem;
 	fullParallel = true;
 	ground  = -1;
@@ -106,15 +99,13 @@ __device__ inline void DeviceVariable::init(int* dMem, int ds){
 	failed  = -1;
 	dbg = true;
 
-	if(fullParallel) deviceMemoryManagement.setFromToMulti(0,0,0,0,0,ds-1,1);
-	else deviceMemoryManagement.setMatrix(0,1);
+		for(int i = 0; i < domainSize; ++i)dMem[i]=1;
 }
 
 ///////////////////////////////////////////////////////////////////////
 
 __device__ inline void DeviceVariable::init2(int* dMem, int ds){
 	domainSize = ds;
-	deviceMemoryManagement.init(dMem,1,1,ds);
 	domain = dMem;
 	fullParallel = true;
 	ground  = -1;
