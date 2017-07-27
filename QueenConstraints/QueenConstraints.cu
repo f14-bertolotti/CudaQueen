@@ -12,7 +12,7 @@ struct DeviceQueenConstraints{
 	__device__ bool checkColConstraint(DeviceVariableCollection&);		//specific implementation
 	__device__ bool checkRDiagConstraint(DeviceVariableCollection&);	//for queen problem
 	__device__ bool checkLDiagConstraint(DeviceVariableCollection&);	//
-																		//
+																		
 	//////////////////////////////////////MULTI THREAD//////////////////////////////////////
 
 	__device__ bool parallelConstraints(DeviceVariableCollection&);		//specific for queen problem
@@ -29,7 +29,7 @@ __device__ bool DeviceQueenConstraints::checkRowConstraint(DeviceVariableCollect
 	for(int j = 0; j < vc.nQueen; ++j){
 		sum = 0;
 		for(int i = 0; i < vc.nQueen; ++i){
-			if(vc.variables[j].domain[i] == 1)++sum;
+			if(vc.deviceVariable[j].domain[i] == 1)++sum;
 		}
 		if(sum != 1) return false;
 	}
@@ -45,7 +45,7 @@ __device__ bool DeviceQueenConstraints::checkColConstraint(DeviceVariableCollect
 	for(int j = 0; j < vc.nQueen; ++j){
 		sum = 0;
 		for(int i = 0; i <vc.nQueen; ++i){
-			if(vc.variables[i].domain[j] > 0)++sum;
+			if(vc.deviceVariable[i].domain[j] > 0)++sum;
 		}
 		if(sum != 1) return false;
 	}
@@ -63,7 +63,7 @@ __device__ bool DeviceQueenConstraints::checkRDiagConstraint(DeviceVariableColle
 		sum = 0;
 		temp=j;
 		while(j < vc.nQueen && i < vc.nQueen){
-			if(vc.variables[i].domain[j]==1)++sum;
+			if(vc.deviceVariable[i].domain[j]==1)++sum;
 			++j;
 			++i;
 		}
@@ -76,7 +76,7 @@ __device__ bool DeviceQueenConstraints::checkRDiagConstraint(DeviceVariableColle
 		sum = 0;
 		temp = i;
 		while(j < vc.nQueen && i < vc.nQueen){
-			if(vc.variables[i].domain[j]==1)++sum;
+			if(vc.deviceVariable[i].domain[j]==1)++sum;
 			++j;
 			++i;
 		}
@@ -96,7 +96,7 @@ __device__ bool DeviceQueenConstraints::checkLDiagConstraint(DeviceVariableColle
 		sum = 0;
 		temp = j;
 		while(j >= 0 && i < vc.nQueen){
-			if(vc.variables[i].domain[j]==1)++sum;
+			if(vc.deviceVariable[i].domain[j]==1)++sum;
 			--j;
 			++i;
 		}
@@ -109,7 +109,7 @@ __device__ bool DeviceQueenConstraints::checkLDiagConstraint(DeviceVariableColle
 		sum = 0;
 		temp = i;
 		while(j >= 0 && i < vc.nQueen){
-			if(vc.variables[i].domain[j]==1)++sum;
+			if(vc.deviceVariable[i].domain[j]==1)++sum;
 			--j;
 			++i;
 		}
@@ -221,9 +221,9 @@ __device__ bool DeviceQueenConstraints::parallelConstraints(DeviceVariableCollec
 	cudaStreamCreateWithFlags(&s2, cudaStreamNonBlocking);
 	__shared__	bool res1, res2;
 	res1 = res2 = true;
-	externParallelAllDiffs<<<1,vc.nQueen,0,s1>>>(vc.deviceMemoryManagement.dMem,vc.nQueen,&res1);
+	externParallelAllDiffs<<<1,vc.nQueen,0,s1>>>(vc.dMem,vc.nQueen,&res1);
 	cudaStreamDestroy(s1);
-	externParallelDiagConstr<<<1,vc.nQueen*4,0,s2>>>(vc.deviceMemoryManagement.dMem,vc.nQueen,&res2);
+	externParallelDiagConstr<<<1,vc.nQueen*4,0,s2>>>(vc.dMem,vc.nQueen,&res2);
 	cudaStreamDestroy(s2);
 	cudaDeviceSynchronize();
 	return res1 && res2;;

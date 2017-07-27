@@ -233,11 +233,11 @@ __global__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, i
 	int j = 0;
 	if(index == 1){
 		for(int i = 0; i < nQueen && j<nValues; ++i){
-			if(deviceWorkSet.deviceVariableCollection[count+j].variables[level].domain[i] == 1){
+			if(deviceWorkSet.deviceVariableCollection[count+j].deviceVariable[level].domain[i] == 1){
 				cudaStream_t s;
 				cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
-				externAssignParallel<<<1,nQueen,0,s>>>(deviceWorkSet.deviceVariableCollection[count+j].variables[level].domain,nQueen,i);
-				deviceWorkSet.deviceVariableCollection[count+j].variables[level].ground = i;
+				externAssignParallel<<<1,nQueen,0,s>>>(deviceWorkSet.deviceVariableCollection[count+j].deviceVariable[level].domain,nQueen,i);
+				deviceWorkSet.deviceVariableCollection[count+j].deviceVariable[level].ground = i;
 				deviceWorkSet.deviceVariableCollection[count+j].lastValues[level] = i+1;
 				cudaStreamDestroy(s);
 				++j;
@@ -251,7 +251,7 @@ __global__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, i
 		deviceQueenPropagation.parallelForwardPropagation(
 			deviceWorkSet.deviceVariableCollection[index+count],
 			level,
-			deviceWorkSet.deviceVariableCollection[index+count].variables[level].ground);
+			deviceWorkSet.deviceVariableCollection[index+count].deviceVariable[level].ground);
 	}
 }
 
@@ -269,7 +269,7 @@ __device__ int DeviceWorkSet::expand(int who, int level){
 
 	int nValues = 0;
 	for(int value = 0; value < nQueen; ++value)
-		if(deviceVariableCollection[who].variables[level].domain[value] == 1)
+		if(deviceVariableCollection[who].deviceVariable[level].domain[value] == 1)
 			++nValues;
 
 	if(nValues + count > nVariableCollection){

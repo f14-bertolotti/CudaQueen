@@ -15,7 +15,7 @@ int main(){
 
 	HostVariableCollection hostVariableCollection(8);
 	init<<<1,1>>>(hostVariableCollection.dMem, 
-				  hostVariableCollection.dMemVariables,
+				  hostVariableCollection.deviceVariableMem,
 				  hostVariableCollection.nQueen,
 				  hostVariableCollection.dMemlastValues,
 				  hostVariableCollection.hostQueue.dMem);

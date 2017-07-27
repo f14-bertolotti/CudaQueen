@@ -45,16 +45,16 @@ __device__ int DeviceQueenPropagation::nextAssign(DeviceVariableCollection& vc, 
 		return -1;
 	}
 
-	if(vc.variables[var].failed == 1){
+	if(vc.deviceVariable[var].failed == 1){
 		printf("\033[31mError\033[0m::DeviceQueenPropagation::nextAssign::VAR ALREADY FAILED\n");
 		return -1;
 	}
 
 	int next;
 	for(next = vc.lastValues[var];next<vc.nQueen;++next)
-		if(vc.variables[var].domain[next]==1){
+		if(vc.deviceVariable[var].domain[next]==1){
 			vc.lastValues[var]=next+1;
-			vc.variables[var].assign(next);
+			vc.deviceVariable[var].assign(next);
 			return next;
 		}
 
@@ -70,14 +70,14 @@ __device__ int DeviceQueenPropagation::allDifferent(DeviceVariableCollection& vc
 		return -1;
 	}
 
-	if(vc.variables[var].ground != val){
+	if(vc.deviceVariable[var].ground != val){
 		printf("\033[31mError\033[0m::QueenPropagation::allDifferent::VARIABLE NOT GROUND\n");
 		return -1;
 	}
 	
 	for(int i = 0; i < vc.nQueen; ++i)
 		if(i != var){
-			vc.variables[i].addTo(val,delta);
+			vc.deviceVariable[i].addTo(val,delta);
 
 		}
 	
@@ -94,32 +94,32 @@ __device__ int DeviceQueenPropagation::diagDifferent(DeviceVariableCollection& v
 		return -1;
 	}
 
-	if(vc.variables[var].ground != val){
+	if(vc.deviceVariable[var].ground != val){
 		printf("\033[31mError\033[0m::DeviceQueenPropagation::diagDifferent::VARIABLE NOT GROUND\n");
 		return -1;
 	}
 
 	int i=var+1,j=val+1;
 	while(i<vc.nQueen && j<vc.nQueen){
-		vc.variables[i].addTo(j,delta);
+		vc.deviceVariable[i].addTo(j,delta);
 		++i;++j;
 	}
 
 	i=var-1,j=val-1;
 	while(i>=0 && j>=0){
-		vc.variables[i].addTo(j,delta);
+		vc.deviceVariable[i].addTo(j,delta);
 		--i;--j;
 	}
 
 	i=var-1,j=val+1;
 	while(i>=0 && j<vc.nQueen){
-		vc.variables[i].addTo(j,delta);
+		vc.deviceVariable[i].addTo(j,delta);
 		--i;++j;
 	}
 
 	i=var+1,j=val-1;
 	while(i<vc.nQueen && j>=0){
-		vc.variables[i].addTo(j,delta);
+		vc.deviceVariable[i].addTo(j,delta);
 		++i;--j;
 	}
 
@@ -141,7 +141,7 @@ __device__ int DeviceQueenPropagation::forwardPropagation(DeviceVariableCollecti
 		return -1;
 	}
 
-	if(vc.variables[var].ground != val){
+	if(vc.deviceVariable[var].ground != val){
 		printf("\033[31mError\033[0m::DeviceQueenPropagation::forwardPropagation::VARIABLE NOT GROUND\n");
 		return -1;
 	}
@@ -153,13 +153,13 @@ __device__ int DeviceQueenPropagation::forwardPropagation(DeviceVariableCollecti
 	do{
 		ch=false;
 		for(int i = 0; i < vc.nQueen; ++i){
-			if(vc.variables[i].changed==1){
-				if(vc.variables[i].ground>=0){
-					allDifferent(vc,i,vc.variables[i].ground,-1);
-					diagDifferent(vc,i,vc.variables[i].ground,-1);
+			if(vc.deviceVariable[i].changed==1){
+				if(vc.deviceVariable[i].ground>=0){
+					allDifferent(vc,i,vc.deviceVariable[i].ground,-1);
+					diagDifferent(vc,i,vc.deviceVariable[i].ground,-1);
 					ch = true;
 				}
-				vc.variables[i].changed=-1;
+				vc.deviceVariable[i].changed=-1;
 			}
 		}
 	}while(ch);
@@ -202,7 +202,7 @@ __device__ int DeviceQueenPropagation::undoForwardPropagation(DeviceVariableColl
 		if(vc.deviceQueue.empty())break;
 	}
 
-	vc.variables[t1].undoAssign(t2);
+	vc.deviceVariable[t1].undoAssign(t2);
 	return 0;
 }
 
@@ -217,15 +217,15 @@ __global__ void externPropagation(DeviceVariableCollection& vc, int var, int val
 	int row = int(((threadIdx.x + blockIdx.x * blockDim.x % (nQueen * nQueen))/nQueen) % nQueen);
 
 	if(row != var && val == col)
-		vc.variables[row].addTo(col,delta);
+		vc.deviceVariable[row].addTo(col,delta);
 	
 	
 	if(row != var && col == row && col+val-var < nQueen && col+val-var >= 0)
-		vc.variables[row].addTo(col+val-var,delta);
+		vc.deviceVariable[row].addTo(col+val-var,delta);
 	
 
 	if(row != var && nQueen-col == row && col-(nQueen-val)+var < nQueen && col-(nQueen-val)+var >= 0)
-		vc.variables[row].addTo(col-(nQueen-val)+var,delta);
+		vc.deviceVariable[row].addTo(col-(nQueen-val)+var,delta);
 }
 
 __device__ int DeviceQueenPropagation::parallelPropagation(DeviceVariableCollection& vc,int var,int val,int delta){
@@ -234,7 +234,7 @@ __device__ int DeviceQueenPropagation::parallelPropagation(DeviceVariableCollect
 		return -1;
 	}
 
-	if(vc.variables[var].ground != val){
+	if(vc.deviceVariable[var].ground != val){
 		printf("\033[31mError\033[0m::QueenPropagation::parallelPropagation::VARIABLE NOT GROUND\n");
 		return -1;
 	}
@@ -262,7 +262,7 @@ __device__ int DeviceQueenPropagation::parallelForwardPropagation(DeviceVariable
 		return -1;
 	}
 
-	if(vc.variables[var].ground != val){
+	if(vc.deviceVariable[var].ground != val){
 		printf("\033[31mError\033[0m::DeviceQueenPropagation::parallelForwardPropagation::VARIABLE NOT GROUND\n");
 		return -1;
 	}
@@ -273,12 +273,12 @@ __device__ int DeviceQueenPropagation::parallelForwardPropagation(DeviceVariable
 	do{
 		ch=false;
 		for(int i = 0; i < vc.nQueen; ++i){
-			if(vc.variables[i].changed==1){
-				if(vc.variables[i].ground>=0){
-					parallelPropagation(vc,i,vc.variables[i].ground,-1);
+			if(vc.deviceVariable[i].changed==1){
+				if(vc.deviceVariable[i].ground>=0){
+					parallelPropagation(vc,i,vc.deviceVariable[i].ground,-1);
 					ch = true;
 				}
-				vc.variables[i].changed=-1;
+				vc.deviceVariable[i].changed=-1;
 			}
 		}
 	}while(ch);
@@ -317,7 +317,7 @@ __device__ int DeviceQueenPropagation::parallelUndoForwardPropagation(DeviceVari
 		if(vc.deviceQueue.empty())break;
 	}
 
-	vc.variables[t1].undoAssign(t2);
+	vc.deviceVariable[t1].undoAssign(t2);
 
 	return 0;
 }

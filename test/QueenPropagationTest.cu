@@ -19,12 +19,12 @@ int main(){
 	HostVariableCollection hostVariableCollection1(6);
 	HostVariableCollection hostVariableCollection2(5);
 	init1<<<1,1>>>(hostVariableCollection1.dMem, 
-				  hostVariableCollection1.dMemVariables,
+				  hostVariableCollection1.deviceVariableMem,
 				  hostVariableCollection1.nQueen,
 				  hostVariableCollection1.dMemlastValues,
 				  hostVariableCollection1.hostQueue.dMem);
 	init2<<<1,1>>>(hostVariableCollection2.dMem, 
-				  hostVariableCollection2.dMemVariables,
+				  hostVariableCollection2.deviceVariableMem,
 				  hostVariableCollection2.nQueen,
 				  hostVariableCollection2.dMemlastValues,
 				  hostVariableCollection2.hostQueue.dMem);

@@ -35,7 +35,7 @@ __global__ void test(){
 	do{
 		//deviceVariableCollection.print();
 		if(level == nQueen){
-			if(deviceQueenConstraints.solution(deviceVariableCollection,false)){
+			if(deviceQueenConstraints.solution(deviceVariableCollection,true)){
 				++nSols;
 			}
 			deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection);
@@ -75,11 +75,11 @@ int main(){
 	cudaDeviceSetLimit(cudaLimitDevRuntimeSyncDepth, nQueen*2);
 
 	HostVariableCollection hostVariableCollection(nQueen);
-	init<<<1,1>>>(hostVariableCollection.dMemVariables,
-				 hostVariableCollection.hostQueue.dMem,
-				 hostVariableCollection.dMem,
-				 hostVariableCollection.dMemlastValues,
-				 hostVariableCollection.nQueen);
+	init<<<1,1>>>(hostVariableCollection.deviceVariableMem,
+				  hostVariableCollection.hostQueue.dMem,
+				  hostVariableCollection.dMem,
+				  hostVariableCollection.dMemlastValues,
+				  hostVariableCollection.nQueen);
 	cudaDeviceSynchronize();
 
 

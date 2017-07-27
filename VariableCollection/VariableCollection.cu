@@ -9,7 +9,7 @@
 
 struct HostVariableCollection{
 	int* dMem;							//ptr to deviceMemory
-	DeviceVariable* dMemVariables;		//vector for variables struct
+	DeviceVariable* deviceVariableMem;	//vector for variables struct
 	int* dMemlastValues;				//last values array
 	int nQueen;							//number of variables and also domain size
 	bool dbg;							//verbose mode
@@ -25,7 +25,7 @@ __host__ HostVariableCollection::HostVariableCollection(int nq):
 	nQueen(nq),dbg(true),hostQueue(nq){
 
 	if(dbg)printf("\033[34mWarn\033[0m::HostVariableCollection::constructor::ALLOCATION\n");
-	cudaMalloc((void**)&dMemVariables,sizeof(DeviceVariable)*nQueen);
+	cudaMalloc((void**)&deviceVariableMem,sizeof(DeviceVariable)*nQueen);
 	cudaMalloc((void**)&dMemlastValues,sizeof(int)*nQueen);
 	cudaMalloc((void**)&dMem,sizeof(int)*nQueen*nQueen);
 }
@@ -34,7 +34,7 @@ __host__ HostVariableCollection::HostVariableCollection(int nq):
 
 __host__ HostVariableCollection::~HostVariableCollection(){
 	if(dbg)printf("\033[34mWarn\033[0m::HostVariableCollection::destructor::DELLOCATION\n");
-	cudaFree(dMemVariables);
+	cudaFree(deviceVariableMem);
 	cudaFree(dMemlastValues);
 	cudaFree(dMem);
 }
@@ -45,15 +45,13 @@ __host__ HostVariableCollection::~HostVariableCollection(){
 
 struct DeviceVariableCollection{
 
-	bool dbg;					//verbose
-	bool fullParallel;			//chose parallel code
-	int nQueen;					//number of variables and domain size
-	int* lastValues;			//last values array
-	DeviceVariable* variables;	//array for variables
-	DeviceQueue deviceQueue;	//triple queue
-	DeviceMemoryManagement deviceMemoryManagement;	
-						//structure for fast modification
-						//of the memory
+	bool dbg;						//verbose
+	bool fullParallel;				//chose parallel code
+	int nQueen;						//number of variables and domain size
+	int* lastValues;				//last values array
+	int* dMem;	
+	DeviceVariable* deviceVariable;	//array for variables
+	DeviceQueue deviceQueue;		//triple queue
 
 	__device__ DeviceVariableCollection();											//do nothing
 	__device__ DeviceVariableCollection(DeviceVariable*,Triple*, int*,int*,int);	//initialize
@@ -75,13 +73,14 @@ __device__ DeviceVariableCollection::DeviceVariableCollection(){}
 ///////////////////////////////////////////////////////////////////////
 
 __device__ DeviceVariableCollection::DeviceVariableCollection(DeviceVariable* dv,Triple* q, int* vm, int* lv, int nq):
-	dbg(true),fullParallel(true),nQueen(nq),variables(dv),
-	deviceMemoryManagement(vm,1,nQueen,nQueen),deviceQueue(q,nq),lastValues(lv){
+	dbg(true),fullParallel(true),nQueen(nq),deviceVariable(dv),deviceQueue(q,nq),lastValues(lv),dMem(vm){
 	
-	if(fullParallel)deviceMemoryManagement.setMatrixFromToMultiLess(0,0,1);
-	else deviceMemoryManagement.setMatrix(0,1);
+	for(int i = 0; i < nQueen*nQueen; ++i){
+		vm[i] = 1;
+	}
+
 	for (int i = 0; i < nQueen; ++i){
-		variables[i].init2(&vm[nQueen*i],nQueen);
+		deviceVariable[i].init2(&vm[nQueen*i],nQueen);
 		lastValues[i]=0;
 	}
 }
@@ -90,16 +89,19 @@ __device__ DeviceVariableCollection::DeviceVariableCollection(DeviceVariable* dv
 
 __device__ void DeviceVariableCollection::init(DeviceVariable* dv,Triple* q, int* vm, int* lv, int nq){
 	dbg = true;
+	dMem = vm;
 	fullParallel = true;
 	nQueen = nq;
-	variables = dv;
+	deviceVariable = dv;
 	lastValues = lv;
 	deviceQueue.init(q,nq);
-	deviceMemoryManagement.init(vm,1,nQueen,nQueen);
-	if(fullParallel)deviceMemoryManagement.setMatrixFromToMultiLess(0,0,1);
-	else deviceMemoryManagement.setMatrix(0,1);
+
+	for(int i = 0; i < nQueen*nQueen; ++i){
+		vm[i] = 1;
+	}
+
 	for (int i = 0; i < nQueen; ++i){
-		variables[i].init2(&vm[nQueen*i],nQueen);
+		deviceVariable[i].init2(&vm[nQueen*i],nQueen);
 		lastValues[i]=0;
 	}
 }
@@ -109,13 +111,14 @@ __device__ void DeviceVariableCollection::init(DeviceVariable* dv,Triple* q, int
 __device__ void DeviceVariableCollection::init2(DeviceVariable* dv,Triple* q, int* vm, int* lv, int nq){
 	dbg = true;
 	fullParallel = true;
+	dMem = vm;
 	nQueen = nq;
-	variables = dv;
+	deviceVariable = dv;
 	lastValues = lv;
 	deviceQueue.init(q,nq);
-	deviceMemoryManagement.init(vm,1,nQueen,nQueen);
+
 	for (int i = 0; i < nQueen; ++i){
-		variables[i].init2(&vm[nQueen*i],nQueen);
+		deviceVariable[i].init2(&vm[nQueen*i],nQueen);
 		lastValues[i]=0;
 	}
 }
@@ -129,7 +132,7 @@ __device__ DeviceVariableCollection::~DeviceVariableCollection(){}
 __device__ void DeviceVariableCollection::print(){
 	for (int i = 0; i < nQueen; ++i){
 		printf("[%d] ::: ",lastValues[i]);
-		variables[i].print();
+		deviceVariable[i].print();
 	}
 	deviceQueue.print();
 	printf("\n");
@@ -139,7 +142,7 @@ __device__ void DeviceVariableCollection::print(){
 
 __device__ bool DeviceVariableCollection::isGround(){
 	for(int i = 0; i < nQueen; ++i)
-		if(variables[i].ground==-1)return false;
+		if(deviceVariable[i].ground==-1)return false;
 
 	return true;
 }
@@ -148,7 +151,7 @@ __device__ bool DeviceVariableCollection::isGround(){
 
 __device__ bool DeviceVariableCollection::isFailed(){
 	for(int i = 0; i < nQueen; ++i)
-		if(variables[i].failed == 1)return true;
+		if(deviceVariable[i].failed == 1)return true;
 
 	return false;
 }
