@@ -1,6 +1,8 @@
 #pragma once
 #include <stdio.h>
 
+#include "../ErrorChecking/ErrorChecking.cu"
+
 ///////////////////////////////////////////////////////////////////////
 ////////////////////////HOST SIDE//////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
@@ -9,7 +11,6 @@ struct HostVariable{
 	
 	int* dMem;						//ptr to memory
 	int DomainSize;					//variable size (cardinality)
-	bool dbg;						//verbose
 
 	__host__ HostVariable(int); 	//allocate memory
 	__host__ int* getPtr();			//return memory ptr;
@@ -19,15 +20,15 @@ struct HostVariable{
 ///////////////////////////////////////////////////////////////////////
 
 __host__ HostVariable::HostVariable(int dm):
-	DomainSize(dm),dbg(true){
-	if(dbg)printf("\033[34mWarn\033[0m::HostVariable::constructor::ALLOCATION\n");
-	cudaMalloc((void**)&dMem,sizeof(int)*DomainSize);
+	DomainSize(dm){
+	ErrorChecking::hostMessage("Warn::HostVariable::HostVariable::ALLOCATION");
+	ErrorChecking::hostErrorCheck(cudaMalloc((void**)&dMem,sizeof(int)*DomainSize),"HostVariable::HostVariable");
 }
 
 ///////////////////////////////////////////////////////////////////////
 
 __host__ HostVariable::~HostVariable(){
-	if(dbg)printf("\033[34mWarn\033[0m::HostVariable::destructor::DELLOCATION\n");
+	ErrorChecking::hostMessage("Warn::HostVariable::~HostVariable::DEALLOCATION");
 	cudaFree(dMem);
 }
 
@@ -46,8 +47,6 @@ struct DeviceVariable{
 	int changed;		//track if variable was modified
 	int failed;			//track if variable is in a failed state
 	int domainSize;		//size of the domain
-
-	bool dbg;			//verbose
 
 	int* domain;		//ptr to domain memory
 
@@ -83,7 +82,7 @@ __device__ inline DeviceVariable::~DeviceVariable(){}
 ///////////////////////////////////////////////////////////////////////
 
 __device__ inline DeviceVariable::DeviceVariable(int* dMem, int ds):
-	domainSize(ds),ground(-1),changed(-1),failed(-1),dbg(true),fullParallel(true),
+	domainSize(ds),ground(-1),changed(-1),failed(-1),fullParallel(true),
 	domain(dMem){
 		for(int i = 0; i < domainSize; ++i)dMem[i]=1;
 	}
@@ -97,9 +96,8 @@ __device__ inline void DeviceVariable::init(int* dMem, int ds){
 	ground  = -1;
 	changed = -1;
 	failed  = -1;
-	dbg = true;
 
-		for(int i = 0; i < domainSize; ++i)dMem[i]=1;
+	for(int i = 0; i < domainSize; ++i)dMem[i]=1;
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -111,52 +109,59 @@ __device__ inline void DeviceVariable::init2(int* dMem, int ds){
 	ground  = -1;
 	changed = -1;
 	failed  = -1;
-	dbg = true;
 }
 
 ///////////////////////////////////////////////////////////////////////
 
 
 __device__ inline void externAssignSequential(int* domain, int size, int value){
+
 	for(int i = 0; i < size; ++i){
 		if(i != value)--domain[i];
 	}
+
 }
 
 __global__ void externAssignParallel(int* domain, int size, int value){
+
 	if(threadIdx.x + blockIdx.x * blockDim.x < size && 
 	   threadIdx.x + blockIdx.x * blockDim.x != value)
 		--domain[threadIdx.x + blockIdx.x * blockDim.x];
+
 }
 
 __device__ inline int DeviceVariable::assign(int value){
+
 	if(value < 0 || value >= domainSize){
-		printf("\033[31mError\033[0m::Variable::assign::ASSIGNMENT OUT OF BOUND\n");
+		ErrorChecking::deviceError("Error::Variable::assign::ASSIGNMENT OUT OF BOUND\n");
 		return -1;
 	}
 
 	if(failed == 1){
-		printf("\033[31mError\033[0m::Variable::assign::VARIABLE ALREADY FAILED\n");
+		ErrorChecking::deviceError("Error::Variable::assign::VARIABLE ALREADY FAILED\n");
 		return -1;
 	}
 
 	if(domain[value]<=0){
-		printf("\033[31mError\033[0m::Variable::assign::VALUE NO MORE IN DOMAIN\n");
+		ErrorChecking::deviceError("Error::Variable::assign::VALUE NO MORE IN DOMAIN\n");
 		return -1;
 	}
 
 	if(ground >= 0 && value != ground){
-		printf("\033[31mError\033[0m::Variable::assign::VARIABLE NOT GROUND\n");
+		ErrorChecking::deviceError("Error::Variable::assign::VARIABLE NOT GROUND\n");
 		return -1;
 	}
+
+
 
 	if(!fullParallel)externAssignSequential(domain, domainSize, value);
 	else{
 		cudaStream_t s;
-		cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
+		ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceVariable::assign");
 		externAssignParallel<<<1,domainSize,0,s>>>(domain, domainSize, value);
-		cudaStreamDestroy(s);
-		cudaDeviceSynchronize();
+		ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceVariable::assign");
+		ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceVariable::assign");
+		ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceVariable::assign");
 	} 
 
 	ground = value;
@@ -167,35 +172,41 @@ __device__ inline int DeviceVariable::assign(int value){
 ///////////////////////////////////////////////////////////////////////
 
 __device__ inline void externUndoAssignSequential(int* domain, int size, int value){
+
 	for(int i = 0; i < size; ++i){
 		if(i != value)++domain[i];
 	}
+
 }
 
 __global__ void externUndoAssignParallel(int* domain, int size, int value){
+
 	if(threadIdx.x + blockIdx.x * blockDim.x < size && 
 	   threadIdx.x + blockIdx.x * blockDim.x != value)
 		++domain[threadIdx.x + blockIdx.x * blockDim.x];
+
 }
 
 __device__ inline int DeviceVariable::undoAssign(int value){
+
 	if(value < 0 || value >= domainSize){
-		printf("\033[31mError\033[0m::Variable::undoAssign::OUT OF BOUND\n");
+		ErrorChecking::deviceError("Error::Variable::undoAssign::OUT OF BOUND\n");
 		return -1;
 	}
 
 	if(ground == -1){
-		printf("\033[31mError\033[0m::Variable::undoAssign::VARIABLE NOT GROUND\n");
+		ErrorChecking::deviceError("Error::Variable::undoAssign::VARIABLE NOT GROUND\n");
 		return -1;
 	}
 
 	if(!fullParallel)externUndoAssignSequential(domain, domainSize, value);
 	else{
 		cudaStream_t s;
-		cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
+		ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceVariable::undoAssign");
 		externUndoAssignParallel<<<1,domainSize>>>(domain, domainSize, value);
-		cudaStreamDestroy(s);
-		cudaDeviceSynchronize();
+		ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceVariable::undoAssign");
+		ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceVariable::undoAssign");
+		ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceVariable::undoAssign");
 	} 
 
 	checkGround();
@@ -208,7 +219,8 @@ __device__ inline int DeviceVariable::undoAssign(int value){
 
 __device__ inline void DeviceVariable::addTo(int value, int delta){
 	if(value < 0 || value >= domainSize){
-		printf("\033[31mError\033[0m::Variable::addTo::ADDING OUT OF BOUND\n");
+
+		ErrorChecking::deviceError("Error::Variable::addTo::ADDING OUT OF BOUND\n");
 		return;
 	}
 	
@@ -224,6 +236,7 @@ __device__ inline void DeviceVariable::addTo(int value, int delta){
 ///////////////////////////////////////////////////////////////////////
 
 __device__ inline void DeviceVariable::checkGround(){
+
 	int sum = 0;
 	for(int i = 0; i < domainSize; ++i){
 		if(domain[i]==1){
@@ -238,17 +251,20 @@ __device__ inline void DeviceVariable::checkGround(){
 ///////////////////////////////////////////////////////////////////////
 
 __device__ inline void DeviceVariable::checkFailed(){
+
 	for(int i = 0; i < domainSize; ++i)
 		if(domain[i]==1){
 			failed = -1;
 			return;
 		}
 	failed = 1;
+
 }
 
 ///////////////////////////////////////////////////////////////////////
 
 __device__ inline void DeviceVariable::print(){
+
 	for (int i = 0; i < domainSize; ++i){
 		if(domain[i] == 0)
 			printf("\033[31m%d\033[0m ", domain[i]);
@@ -266,6 +282,7 @@ __device__ inline void DeviceVariable::print(){
 	else printf("fld:%d ", failed);
 
 	printf("sz:%d\n", domainSize);
+
 }
 
 ///////////////////////////////////////////////////////////////////////

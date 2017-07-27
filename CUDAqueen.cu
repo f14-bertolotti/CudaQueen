@@ -18,7 +18,7 @@
 	il flusso di esecuzione principale è unico
 */
 
-__device__ const int nQueen=9;
+__device__ const int nQueen=5;
 
 __device__ DeviceQueenConstraints deviceQueenConstraints;
 __device__ DeviceQueenPropagation deviceQueenPropagation;
