@@ -4,6 +4,7 @@
 #include "./QueenConstraints/QueenConstraints.cu"
 #include "./QueenPropagation/QueenPropagation.cu"
 #include "./TripleQueue/TripleQueue.cu"
+#include "./WorkSet/WorkSet.cu"
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -104,7 +105,6 @@ int main(){
 
 __global__ void init(DeviceVariable* variables,Triple* queue, int* varMem, int* lastValsMem, int nQueen){
 	deviceVariableCollection.init(variables,queue,varMem,lastValsMem,nQueen);
-	deviceVariableCollection.dbg = false;
 }
 
 

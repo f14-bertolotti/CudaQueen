@@ -1,5 +1,6 @@
 #pragma once
 #include "../VariableCollection/VariableCollection.cu"
+#include "../ErrorChecking/ErrorChecking.cu"
 
 struct DeviceQueenPropagation{
 
@@ -36,17 +37,17 @@ __device__ DeviceQueenPropagation::DeviceQueenPropagation(){}
 __device__ int DeviceQueenPropagation::nextAssign(DeviceVariableCollection& vc, int var){
 
 	if(var < 0 || var >= vc.nQueen){
-		printf("\033[31mError\033[0m::DeviceQueenPropagation::nextAssign::VAR OUT OF BOUND\n");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::nextAssign::VAR OUT OF BOUND");
 		return -1;
 	}
 
 	if(vc.lastValues[var] >= vc.nQueen){
-		if(vc.dbg)printf("\033[34mWarn\033[0m::DeviceQueenPropagation::nextAssign::VALUE OUT OF BOUND\n");
+		ErrorChecking::deviceMessage("Warn::DeviceQueenPropagation::nextAssign::VALUE OUT OF BOUND");
 		return -1;
 	}
 
 	if(vc.deviceVariable[var].failed == 1){
-		printf("\033[31mError\033[0m::DeviceQueenPropagation::nextAssign::VAR ALREADY FAILED\n");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::nextAssign::VAR ALREADY FAILED");
 		return -1;
 	}
 
@@ -58,20 +59,23 @@ __device__ int DeviceQueenPropagation::nextAssign(DeviceVariableCollection& vc, 
 			return next;
 		}
 
-	if(vc.dbg)printf("\033[34mWarn\033[0m::DeviceQueenPropagation::nextAssign::NEXTVALUE NOT FOUND\n");
+	ErrorChecking::deviceMessage("Warn::DeviceQueenPropagation::nextAssign::NEXTVALUE NOT FOUND");
+
 	return -1;
+
 }
 
 ////////////////////////////////////////////////////////////////////////////
 
 __device__ int DeviceQueenPropagation::allDifferent(DeviceVariableCollection& vc, int var, int val, int delta){
+
 	if(var < 0 || var > vc.nQueen || val < 0 || val > vc.nQueen){
-		printf("\033[31mError\033[0m::DeviceQueenPropagation::allDifferent::OUT OF BOUND\n");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::allDifferent::OUT OF BOUND");
 		return -1;
 	}
 
 	if(vc.deviceVariable[var].ground != val){
-		printf("\033[31mError\033[0m::QueenPropagation::allDifferent::VARIABLE NOT GROUND\n");
+		ErrorChecking::deviceError("Error::QueenPropagation::allDifferent::VARIABLE NOT GROUND");
 		return -1;
 	}
 	
@@ -84,18 +88,20 @@ __device__ int DeviceQueenPropagation::allDifferent(DeviceVariableCollection& vc
 	if(delta < 0)vc.deviceQueue.add(var,val,3);
 
 	return 0;	
+
 }
 
 ////////////////////////////////////////////////////////////////////////////
 
 __device__ int DeviceQueenPropagation::diagDifferent(DeviceVariableCollection& vc, int var, int val, int delta){
+
 	if(var < 0 || var > vc.nQueen || val < 0 || val > vc.nQueen){
-		printf("\033[31mError\033[0m::DeviceQueenPropagation::diagDifferent::OUT OF BOUND\n");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::diagDifferent::OUT OF BOUND");
 		return -1;
 	}
 
 	if(vc.deviceVariable[var].ground != val){
-		printf("\033[31mError\033[0m::DeviceQueenPropagation::diagDifferent::VARIABLE NOT GROUND\n");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::diagDifferent::VARIABLE NOT GROUND");
 		return -1;
 	}
 
@@ -125,6 +131,7 @@ __device__ int DeviceQueenPropagation::diagDifferent(DeviceVariableCollection& v
 
 	if(delta < 0)vc.deviceQueue.add(var,val,4);
 	return 0;
+
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -132,17 +139,17 @@ __device__ int DeviceQueenPropagation::diagDifferent(DeviceVariableCollection& v
 __device__ int DeviceQueenPropagation::forwardPropagation(DeviceVariableCollection& vc, int var, int val){
 
 	if(var < 0 || var > vc.nQueen){
-		printf("\033[31mError\033[0m::DeviceQueenPropagation::forwardPropagation:: VAR OUT OF BOUND\n");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::forwardPropagation:: VAR OUT OF BOUND");
 		return -1;
 	}
 
 	if(val < 0 || val > vc.nQueen){
-		printf("\033[31mError\033[0m::DeviceQueenPropagation::forwardPropagation:: VAL OUT OF BOUND\n");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::forwardPropagation:: VAL OUT OF BOUND");
 		return -1;
 	}
 
 	if(vc.deviceVariable[var].ground != val){
-		printf("\033[31mError\033[0m::DeviceQueenPropagation::forwardPropagation::VARIABLE NOT GROUND\n");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::forwardPropagation::VARIABLE NOT GROUND");
 		return -1;
 	}
 
@@ -167,18 +174,20 @@ __device__ int DeviceQueenPropagation::forwardPropagation(DeviceVariableCollecti
 	vc.deviceQueue.add(var,val,5);
 
 	return 0;
+
 }
 
 ////////////////////////////////////////////////////////////////////////////
 
 __device__ int DeviceQueenPropagation::undoForwardPropagation(DeviceVariableCollection& vc){
+
 	if(vc.deviceQueue.front()->cs!=5){
-		printf("\033[31mError\033[0m::DeviceQueenPropagation::undoForwardPropagation::ERROR IN QUEUE\n");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::undoForwardPropagation::ERROR IN QUEUE");
 		return -1;		
 	}
 
 	if(vc.deviceQueue.empty()){
-		printf("\033[31mError\033[0m::DeviceQueenPropagation::undoForwardPropagation::EMPTY QUEUE\n");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::undoForwardPropagation::EMPTY QUEUE");
 		return -1;		
 	}
 
@@ -204,6 +213,7 @@ __device__ int DeviceQueenPropagation::undoForwardPropagation(DeviceVariableColl
 
 	vc.deviceVariable[t1].undoAssign(t2);
 	return 0;
+
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -213,6 +223,7 @@ __device__ DeviceQueenPropagation::~DeviceQueenPropagation(){}
 ////////////////////////////////////////////////////////////////////////////
 
 __global__ void externPropagation(DeviceVariableCollection& vc, int var, int val, int nQueen,int delta){
+
 	int col = int((threadIdx.x + blockIdx.x * blockDim.x % (nQueen * nQueen))%nQueen);
 	int row = int(((threadIdx.x + blockIdx.x * blockDim.x % (nQueen * nQueen))/nQueen) % nQueen);
 
@@ -226,26 +237,31 @@ __global__ void externPropagation(DeviceVariableCollection& vc, int var, int val
 
 	if(row != var && nQueen-col == row && col-(nQueen-val)+var < nQueen && col-(nQueen-val)+var >= 0)
 		vc.deviceVariable[row].addTo(col-(nQueen-val)+var,delta);
+
 }
 
 __device__ int DeviceQueenPropagation::parallelPropagation(DeviceVariableCollection& vc,int var,int val,int delta){
+
 	if(var < 0 || var > vc.nQueen || val < 0 || val > vc.nQueen){
-		printf("\033[31mError\033[0m::DeviceQueenPropagation::parallelPropagation::OUT OF BOUND\n");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelPropagation::OUT OF BOUND");
 		return -1;
 	}
 
 	if(vc.deviceVariable[var].ground != val){
-		printf("\033[31mError\033[0m::QueenPropagation::parallelPropagation::VARIABLE NOT GROUND\n");
+		ErrorChecking::deviceError("Error::QueenPropagation::parallelPropagation::VARIABLE NOT GROUND");
 		return -1;
 	}
+
 	cudaStream_t s;
-	cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
+	ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceQueenPropagation::parallelPropagation::STREAM CREATION");
 	externPropagation<<<1,vc.nQueen*vc.nQueen,0,s>>>(vc,var,val,vc.nQueen,delta);
-	cudaStreamDestroy(s);
+	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceQueenPropagation::parallelPropagation::EXTERN PROPAGATION CALL");
+	ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceQueenPropagation::parallelPropagation::STREAM DESTRUCTION");
 	if(delta < 0)vc.deviceQueue.add(var,val,6);
-	cudaDeviceSynchronize();
+	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceQueenPropagation::parallelPropagation::SYNCH");
 
 	return 0;
+
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -253,17 +269,17 @@ __device__ int DeviceQueenPropagation::parallelPropagation(DeviceVariableCollect
 __device__ int DeviceQueenPropagation::parallelForwardPropagation(DeviceVariableCollection& vc, int var, int val){
 
 	if(var < 0 || var > vc.nQueen){
-		printf("\033[31mError\033[0m::DeviceQueenPropagation::parallelForwardPropagation:: VAR OUT OF BOUND\n");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation::VAR OUT OF BOUND");
 		return -1;
 	}
 
 	if(val < 0 || val > vc.nQueen){
-		printf("\033[31mError\033[0m::DeviceQueenPropagation::parallelForwardPropagation:: VAL OUT OF BOUND\n");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation::VAL OUT OF BOUND");
 		return -1;
 	}
 
 	if(vc.deviceVariable[var].ground != val){
-		printf("\033[31mError\033[0m::DeviceQueenPropagation::parallelForwardPropagation::VARIABLE NOT GROUND\n");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation::VARIABLE NOT GROUND");
 		return -1;
 	}
 
@@ -291,13 +307,14 @@ __device__ int DeviceQueenPropagation::parallelForwardPropagation(DeviceVariable
 ////////////////////////////////////////////////////////////////////////////
 
 __device__ int DeviceQueenPropagation::parallelUndoForwardPropagation(DeviceVariableCollection& vc){
+
 	if(vc.deviceQueue.front()->cs!=5){
-		printf("\033[31mError\033[0m::DeviceQueenPropagation::parallelUndoForwardPropagation::ERROR IN QUEUE\n");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelUndoForwardPropagation::ERROR IN QUEUE");
 		return -1;		
 	}
 
 	if(vc.deviceQueue.empty()){
-		printf("\033[31mError\033[0m::DeviceQueenPropagation::parallelUndoForwardPropagation::EMPTY QUEUE\n");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelUndoForwardPropagation::EMPTY QUEUE");
 		return -1;		
 	}
 
@@ -309,10 +326,11 @@ __device__ int DeviceQueenPropagation::parallelUndoForwardPropagation(DeviceVari
 	vc.deviceQueue.pop();
 	while(vc.deviceQueue.front()->cs!=5){
 		cudaStream_t s;
-		cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
+		ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceQueenPropagation::parallelUndoForwardPropagation::STREAM CREATION");
 		externPropagation<<<1,vc.nQueen*vc.nQueen,0,s>>>(vc,vc.deviceQueue.front()->var,vc.deviceQueue.front()->val,vc.nQueen,+1);
-		cudaStreamDestroy(s);
-		cudaDeviceSynchronize();
+		ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceQueenPropagation::parallelUndoForwardPropagation::EXTERN PROPAGATION CALL");
+		ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceQueenPropagation::parallelUndoForwardPropagation::STREAM DESTRUCTION");
+		ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceQueenPropagation::parallelUndoForwardPropagation::STREAM SYNCH");
 		vc.deviceQueue.pop();
 		if(vc.deviceQueue.empty())break;
 	}

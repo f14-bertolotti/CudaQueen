@@ -1,6 +1,7 @@
 #pragma once
 #include "../Variable/Variable.cu"
 #include "../TripleQueue/TripleQueue.cu"
+#include "../ErrorChecking/ErrorChecking.cu"
 
 ///////////////////////////////////////////////////////////////////////
 ////////////////////////HOST SIDE//////////////////////////////////////
@@ -11,7 +12,6 @@ struct HostVariableCollection{
 	DeviceVariable* deviceVariableMem;	//vector for variables struct
 	int* dMemlastValues;				//last values array
 	int nQueen;							//number of variables and also domain size
-	bool dbg;							//verbose mode
 	HostQueue hostQueue;				//queue
 
 	__host__ HostVariableCollection(int);		//allocate memory with hostMemoryManagemnt
@@ -21,21 +21,21 @@ struct HostVariableCollection{
 ///////////////////////////////////////////////////////////////////////
 
 __host__ HostVariableCollection::HostVariableCollection(int nq):
-	nQueen(nq),dbg(true),hostQueue(nq){
+	nQueen(nq),hostQueue(nq){
 
-	if(dbg)printf("\033[34mWarn\033[0m::HostVariableCollection::constructor::ALLOCATION\n");
-	cudaMalloc((void**)&deviceVariableMem,sizeof(DeviceVariable)*nQueen);
-	cudaMalloc((void**)&dMemlastValues,sizeof(int)*nQueen);
-	cudaMalloc((void**)&dMem,sizeof(int)*nQueen*nQueen);
+	ErrorChecking::hostMessage("Warn::HostVariableCollection::constructor::ALLOCATION");
+	ErrorChecking::hostErrorCheck(cudaMalloc((void**)&deviceVariableMem,sizeof(DeviceVariable)*nQueen),"HostVariableCollection::HostVariableCollection::DEVICE VARIABLE ALLOCATION");
+	ErrorChecking::hostErrorCheck(cudaMalloc((void**)&dMemlastValues,sizeof(int)*nQueen),"HostVariableCollection::HostVariableCollection::LAST VALUE ALLOCATION");
+	ErrorChecking::hostErrorCheck(cudaMalloc((void**)&dMem,sizeof(int)*nQueen*nQueen),"HostVariableCollection::HostVariableCollection::VARIABLE MEM ALLOCATION");
 }
 
 ///////////////////////////////////////////////////////////////////////
 
 __host__ HostVariableCollection::~HostVariableCollection(){
-	if(dbg)printf("\033[34mWarn\033[0m::HostVariableCollection::destructor::DELLOCATION\n");
-	cudaFree(deviceVariableMem);
-	cudaFree(dMemlastValues);
-	cudaFree(dMem);
+	ErrorChecking::hostMessage("Warn::HostVariableCollection::destructor::DELLOCATION");
+	ErrorChecking::hostErrorCheck(cudaFree(deviceVariableMem),"HostVariableCollection::~HostVariableCollection::DEVICE VARIABLE DEALLOCATION");;
+	ErrorChecking::hostErrorCheck(cudaFree(dMemlastValues),"HostVariableCollection::~HostVariableCollection::DEVICE VARIABLE DEALLOCATION");;
+	ErrorChecking::hostErrorCheck(cudaFree(dMem),"HostVariableCollection::~HostVariableCollection::DEVICE VARIABLE DEALLOCATION");;
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -44,7 +44,6 @@ __host__ HostVariableCollection::~HostVariableCollection(){
 
 struct DeviceVariableCollection{
 
-	bool dbg;						//verbose
 	bool fullParallel;				//chose parallel code
 	int nQueen;						//number of variables and domain size
 	int* lastValues;				//last values array
@@ -72,7 +71,7 @@ __device__ DeviceVariableCollection::DeviceVariableCollection(){}
 ///////////////////////////////////////////////////////////////////////
 
 __device__ DeviceVariableCollection::DeviceVariableCollection(DeviceVariable* dv,Triple* q, int* vm, int* lv, int nq):
-	dbg(true),fullParallel(true),nQueen(nq),deviceVariable(dv),deviceQueue(q,nq),lastValues(lv),dMem(vm){
+	fullParallel(true),nQueen(nq),deviceVariable(dv),deviceQueue(q,nq),lastValues(lv),dMem(vm){
 	
 	for(int i = 0; i < nQueen*nQueen; ++i){
 		vm[i] = 1;
@@ -82,12 +81,13 @@ __device__ DeviceVariableCollection::DeviceVariableCollection(DeviceVariable* dv
 		deviceVariable[i].init2(&vm[nQueen*i],nQueen);
 		lastValues[i]=0;
 	}
+
 }
 
 ///////////////////////////////////////////////////////////////////////
 
 __device__ void DeviceVariableCollection::init(DeviceVariable* dv,Triple* q, int* vm, int* lv, int nq){
-	dbg = true;
+	
 	dMem = vm;
 	fullParallel = true;
 	nQueen = nq;
@@ -103,12 +103,13 @@ __device__ void DeviceVariableCollection::init(DeviceVariable* dv,Triple* q, int
 		deviceVariable[i].init2(&vm[nQueen*i],nQueen);
 		lastValues[i]=0;
 	}
+
 }
 
 ///////////////////////////////////////////////////////////////////////
 
 __device__ void DeviceVariableCollection::init2(DeviceVariable* dv,Triple* q, int* vm, int* lv, int nq){
-	dbg = true;
+
 	fullParallel = true;
 	dMem = vm;
 	nQueen = nq;
@@ -120,22 +121,12 @@ __device__ void DeviceVariableCollection::init2(DeviceVariable* dv,Triple* q, in
 		deviceVariable[i].init2(&vm[nQueen*i],nQueen);
 		lastValues[i]=0;
 	}
+
 }
 
 ///////////////////////////////////////////////////////////////////////
 
 __device__ DeviceVariableCollection::~DeviceVariableCollection(){}
-
-///////////////////////////////////////////////////////////////////////
-
-__device__ void DeviceVariableCollection::print(){
-	for (int i = 0; i < nQueen; ++i){
-		printf("[%d] ::: ",lastValues[i]);
-		deviceVariable[i].print();
-	}
-	deviceQueue.print();
-	printf("\n");
-}
 
 ///////////////////////////////////////////////////////////////////////
 
@@ -153,6 +144,17 @@ __device__ bool DeviceVariableCollection::isFailed(){
 		if(deviceVariable[i].failed == 1)return true;
 
 	return false;
+}
+
+///////////////////////////////////////////////////////////////////////
+
+__device__ void DeviceVariableCollection::print(){
+	for (int i = 0; i < nQueen; ++i){
+		printf("[%d] ::: ",lastValues[i]);
+		deviceVariable[i].print();
+	}
+	deviceQueue.print();
+	printf("\n");
 }
 
 ///////////////////////////////////////////////////////////////////////

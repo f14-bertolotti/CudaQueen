@@ -1,6 +1,5 @@
 #pragma once
 #include <stdio.h>
-
 #include "../ErrorChecking/ErrorChecking.cu"
 
 ///////////////////////////////////////////////////////////////////////
@@ -133,22 +132,22 @@ __global__ void externAssignParallel(int* domain, int size, int value){
 __device__ inline int DeviceVariable::assign(int value){
 
 	if(value < 0 || value >= domainSize){
-		ErrorChecking::deviceError("Error::Variable::assign::ASSIGNMENT OUT OF BOUND\n");
+		ErrorChecking::deviceError("Error::Variable::assign::ASSIGNMENT OUT OF BOUND");
 		return -1;
 	}
 
 	if(failed == 1){
-		ErrorChecking::deviceError("Error::Variable::assign::VARIABLE ALREADY FAILED\n");
+		ErrorChecking::deviceError("Error::Variable::assign::VARIABLE ALREADY FAILED");
 		return -1;
 	}
 
 	if(domain[value]<=0){
-		ErrorChecking::deviceError("Error::Variable::assign::VALUE NO MORE IN DOMAIN\n");
+		ErrorChecking::deviceError("Error::Variable::assign::VALUE NO MORE IN DOMAIN");
 		return -1;
 	}
 
 	if(ground >= 0 && value != ground){
-		ErrorChecking::deviceError("Error::Variable::assign::VARIABLE NOT GROUND\n");
+		ErrorChecking::deviceError("Error::Variable::assign::VARIABLE NOT GROUND");
 		return -1;
 	}
 
@@ -190,12 +189,12 @@ __global__ void externUndoAssignParallel(int* domain, int size, int value){
 __device__ inline int DeviceVariable::undoAssign(int value){
 
 	if(value < 0 || value >= domainSize){
-		ErrorChecking::deviceError("Error::Variable::undoAssign::OUT OF BOUND\n");
+		ErrorChecking::deviceError("Error::Variable::undoAssign::OUT OF BOUND");
 		return -1;
 	}
 
 	if(ground == -1){
-		ErrorChecking::deviceError("Error::Variable::undoAssign::VARIABLE NOT GROUND\n");
+		ErrorChecking::deviceError("Error::Variable::undoAssign::VARIABLE NOT GROUND");
 		return -1;
 	}
 
@@ -220,7 +219,7 @@ __device__ inline int DeviceVariable::undoAssign(int value){
 __device__ inline void DeviceVariable::addTo(int value, int delta){
 	if(value < 0 || value >= domainSize){
 
-		ErrorChecking::deviceError("Error::Variable::addTo::ADDING OUT OF BOUND\n");
+		ErrorChecking::deviceError("Error::Variable::addTo::ADDING OUT OF BOUND");
 		return;
 	}
 	

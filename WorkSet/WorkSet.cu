@@ -3,6 +3,7 @@
 #include "../TripleQueue/TripleQueue.cu"
 #include "../VariableCollection/VariableCollection.cu"
 #include "../QueenPropagation/QueenPropagation.cu"
+#include "../ErrorChecking/ErrorChecking.cu"
 #include <cstdio>
 
 ///////////////////////////////////////////////////////////////////////
@@ -27,35 +28,40 @@ struct HostWorkSet{
 
 };
 
-///////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 __global__ void externSet(int* variablesMem,int* lastValuesMem, int nQueen,int nVariableCollection){
+
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
 	if(index < nVariableCollection*nQueen*nQueen){
 		variablesMem[index] = 1;
 		if(index < nVariableCollection*nQueen)
 			lastValuesMem[index] = 0;
 	}
+
 }
 
 __host__ HostWorkSet::HostWorkSet(int nq, int nvc):nQueen(nq),nVariableCollection(nvc){
-	cudaMalloc((void**)&deviceVariableCollection,sizeof(DeviceVariableCollection)*nVariableCollection);
-	cudaMalloc((void**)&deviceVariable,sizeof(DeviceVariable)*nVariableCollection*nQueen);
-	cudaMalloc((void**)&variablesMem,sizeof(int)*nQueen*nQueen*nVariableCollection);
-	cudaMalloc((void**)&lastValuesMem,sizeof(int)*nQueen*nVariableCollection);
-	cudaMalloc((void**)&tripleQueueMem,sizeof(Triple)*nQueen*nQueen*3*nVariableCollection);
+
+	ErrorChecking::hostErrorCheck(cudaMalloc((void**)&deviceVariableCollection,sizeof(DeviceVariableCollection)*nVariableCollection),"HostWorkSet::HostWorkSet::DEVICE VARIABLE COLLECTION ALLOCATION");
+	ErrorChecking::hostErrorCheck(cudaMalloc((void**)&deviceVariable,sizeof(DeviceVariable)*nVariableCollection*nQueen),"HostWorkSet::HostWorkSet::DEVICE VARIABLE ALLOCATION");
+	ErrorChecking::hostErrorCheck(cudaMalloc((void**)&variablesMem,sizeof(int)*nQueen*nQueen*nVariableCollection),"HostWorkSet::HostWorkSet::VARIABLE MEM ALLOCATION");
+	ErrorChecking::hostErrorCheck(cudaMalloc((void**)&lastValuesMem,sizeof(int)*nQueen*nVariableCollection),"HostWorkSet::HostWorkSet::LAST VALUES MEM ALLOCATION");
+	ErrorChecking::hostErrorCheck(cudaMalloc((void**)&tripleQueueMem,sizeof(Triple)*nQueen*nQueen*3*nVariableCollection),"HostWorkSet::HostWorkSet::TRIPLE QUEUE MEM ALLOCATION");
 
 	externSet<<<int(nVariableCollection*nQueen*nQueen)/1000+1,1000>>>(variablesMem,lastValuesMem,nQueen,nVariableCollection);
+	ErrorChecking::hostErrorCheck(cudaPeekAtLastError(),"HostWorkSet::HostWorkSet::EXTERN SET CALL");
+	ErrorChecking::hostErrorCheck(cudaDeviceSynchronize(),"HostWorkSet::HostWorkSet::SYNCH");
 }
 
-///////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 __host__ HostWorkSet::~HostWorkSet(){
-	cudaFree(variablesMem);
-	cudaFree(lastValuesMem);
-	cudaFree(tripleQueueMem);
-	cudaFree(deviceVariableCollection);
-	cudaFree(deviceVariable);
+	ErrorChecking::hostErrorCheck(cudaFree(variablesMem),"HostWorkSet::~HostWorkSet::VARIABLES MEM DEALLOCATION");
+	ErrorChecking::hostErrorCheck(cudaFree(lastValuesMem),"HostWorkSet::~HostWorkSet::LAST VALUES MEM DEALLOCATION");
+	ErrorChecking::hostErrorCheck(cudaFree(tripleQueueMem),"HostWorkSet::~HostWorkSet::TRIPLE QUEUE ME DEALLOCATION");
+	ErrorChecking::hostErrorCheck(cudaFree(deviceVariableCollection),"HostWorkSet::~HostWorkSet::DEVICE VARIABLE COLLECTION DEALLOCATION");
+	ErrorChecking::hostErrorCheck(cudaFree(deviceVariable),"HostWorkSet::~HostWorkSet::DEVICE VARIABLE DEALLOCATION");
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -93,24 +99,31 @@ struct DeviceWorkSet{
 
 };
 
-///////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 __device__ DeviceWorkSet::DeviceWorkSet(){}
 
-///////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 __global__ void externInit(DeviceVariableCollection* deviceVariableCollection,
 						   DeviceVariable* deviceVariable, int* variablesMem,
 						   int* lastValuesMem, Triple* tripleQueueMem, int nQueen,
 						   int nVariableCollection){
+
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
 	if(index < nQueen*nVariableCollection){
+
 		deviceVariable[index].init2(&variablesMem[index*nQueen],nQueen);
-		if(index < nVariableCollection)
+
+		if(index < nVariableCollection){
+
 			deviceVariableCollection[index].init2(&deviceVariable[index*nQueen],
 												 &tripleQueueMem[index*nQueen*nQueen*3],
 												 &variablesMem[index*nQueen*nQueen],
 												 &lastValuesMem[index*nQueen],nQueen);
+
+		}
+
 	}
 
 }
@@ -123,26 +136,35 @@ __device__ DeviceWorkSet::DeviceWorkSet(DeviceVariableCollection* dvc, DeviceVar
 										fullParallel(true),count(1),lockCount(0){
 
 	if(fullParallel){
+
 		externInit<<<int(nVariableCollection*nQueen)/1000+1,1000>>>(deviceVariableCollection,
 																	deviceVariable,
 																	variablesMem,
 													    			lastValuesMem,
 																	tripleQueueMem,
 																	nQueen,nVariableCollection);
+		ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceWorkSet::DeviceWorkSet::EXTERN INIT");
+
 	}else{
+
 		for(int i = 0; i < nVariableCollection*nQueen; ++i){
+
 			deviceVariable[i].init2(&variablesMem[i*nQueen],nQueen);
-			if(i < nVariableCollection)
+
+			if(i < nVariableCollection){
+
 				deviceVariableCollection[i].init2(&deviceVariable[i*nQueen],
 												 &tripleQueueMem[i*nQueen*nQueen*3],
 												 &variablesMem[i*nQueen*nQueen],
 												 &lastValuesMem[i*nQueen],nQueen);
+
+			}
 		}
 	}
-
+	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceWorkSet::DeviceWorkSet::SYNCH");
 }
 
-///////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 __device__ void DeviceWorkSet::init(DeviceVariableCollection* dvc, DeviceVariable* dv,
 									int* vm, int* lvm, Triple* tqm, int nq, int nvc){
@@ -164,41 +186,42 @@ __device__ void DeviceWorkSet::init(DeviceVariableCollection* dvc, DeviceVariabl
 	lockCount = 0;
 
 	if(fullParallel){
+
 		externInit<<<int(nVariableCollection*nQueen)/1000+1,1000>>>(deviceVariableCollection,
 																	deviceVariable,
 																	variablesMem,
 													    			lastValuesMem,
 																	tripleQueueMem,
 																	nQueen,nVariableCollection);
+		ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceWorkSet::init::EXTERN INIT");
+
 	}else{
+
 		for(int i = 0; i < nVariableCollection*nQueen; ++i){
+
 			deviceVariable[i].init2(&variablesMem[i*nQueen],nQueen);
-			if(i < nVariableCollection)
+
+			if(i < nVariableCollection){
+
 				deviceVariableCollection[i].init2(&deviceVariable[i*nQueen],
 												 &tripleQueueMem[i*nQueen*nQueen*3],
 												 &variablesMem[i*nQueen*nQueen],
 												 &lastValuesMem[i*nQueen],nQueen);
+
+			}
 		}
 	}
+	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceWorkSet::init::SYNCH");
 }
 
-///////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 __device__ DeviceWorkSet::~DeviceWorkSet(){}
 
-///////////////////////////////////////////////////////////////////////
-
-__device__ void DeviceWorkSet::print(){
-	for(int i = 0; i < nVariableCollection; ++i){
-		printf("------[%d]------\n", i);
-		deviceVariableCollection[i].print();
-	}
-	printf("count : %d\n", count);
-}
-
-///////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 __global__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, int level, int nValues, int nQueen){
+
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
 
 	DeviceQueenPropagation deviceQueenPropagation;
@@ -228,23 +251,26 @@ __global__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, i
 	}
 
 	__syncthreads();
+	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"externExpand::SYNCHTHREAD 1");
 
 	int j = 0;
 	if(index == 1){
 		for(int i = 0; i < nQueen && j<nValues; ++i){
 			if(deviceWorkSet.deviceVariableCollection[count+j].deviceVariable[level].domain[i] == 1){
 				cudaStream_t s;
-				cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
+				ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"externExpand::STREAM CREATION");
 				externAssignParallel<<<1,nQueen,0,s>>>(deviceWorkSet.deviceVariableCollection[count+j].deviceVariable[level].domain,nQueen,i);
+				ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"externExpand::EXTERN ASSIGN PARALLEL CALL");
 				deviceWorkSet.deviceVariableCollection[count+j].deviceVariable[level].ground = i;
 				deviceWorkSet.deviceVariableCollection[count+j].lastValues[level] = i+1;
-				cudaStreamDestroy(s);
+				ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"externExpand::STREAM DESTRUCTION");
 				++j;
 			}
 		}
 	}
 
 	__syncthreads();
+	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"externExpand::SYNCHTHREAD 1");
 
 	if(index < nValues){
 		deviceQueenPropagation.parallelForwardPropagation(
@@ -257,12 +283,12 @@ __global__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, i
 __device__ int DeviceWorkSet::expand(int who, int level){
 
 	if(who < 0 || who >= count){
-		printf("\033[31mError\033[0m::DeviceWorkSet::expand::VARIABLE COLLECTION INDEX OUT OF BOUND\n");
+		ErrorChecking::deviceError("Error::DeviceWorkSet::expand::VARIABLE COLLECTION INDEX OUT OF BOUND");
 		return -1;
 	}
 
 	if(level < 0 || level > nQueen){
-		printf("\033[31mError\033[0m::DeviceWorkSet::expand::LEVEL OUT OF BOUND\n");
+		ErrorChecking::deviceError("Error::DeviceWorkSet::expand::LEVEL OUT OF BOUND");
 		return -1;
 	}
 
@@ -272,12 +298,12 @@ __device__ int DeviceWorkSet::expand(int who, int level){
 			++nValues;
 
 	if(nValues + count > nVariableCollection){
-		printf("\033[31mError\033[0m::DeviceWorkSet::expand::NOT ENOUGH SPACE\n");
+		ErrorChecking::deviceError("Error::DeviceWorkSet::expand::NOT ENOUGH SPACE");
 		return -1;
 	}
 
 	if(nValues == 0){
-		printf("\033[34mWarn\033[0m::DeviceWorkSet::expand::VARIABLE IS FAILED\n");
+		ErrorChecking::deviceError("Warn::DeviceWorkSet::expand::VARIABLE IS FAILED");
 		return 0;
 	}
 
@@ -287,16 +313,30 @@ __device__ int DeviceWorkSet::expand(int who, int level){
 	count+=nValues;
 	lockCount = 0;
 
-	cudaStream_t s;
-	cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
-	externExpand<<<int(nQueen*nQueen*3*nValues)/1000+1,1000,0,s>>>(*this,who,temp,level,nValues,nQueen);
-	cudaStreamDestroy(s);
-	cudaDeviceSynchronize();
+	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceWorkSet::expand::ATOMIC CALL");
 
+	cudaStream_t s;
+	ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceWorkSet::expand::STREAM CREATION");
+	externExpand<<<int(nQueen*nQueen*3*nValues)/1000+1,1000,0,s>>>(*this,who,temp,level,nValues,nQueen);
+	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceWorkSet::expand::EXTERN EXPAND CALL");
+	ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceWorkSet::expand::STREAM DESTRUCTION");
+	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceWorkSet::expand::SYNCH");
 	return nValues;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+__device__ void DeviceWorkSet::print(){
+
+	for(int i = 0; i < nVariableCollection; ++i){
+		printf("------[%d]------\n", i);
+		deviceVariableCollection[i].print();
+	}
+	printf("count : %d\n", count);
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 

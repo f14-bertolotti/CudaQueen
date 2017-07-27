@@ -1,5 +1,6 @@
 #pragma once
 #include "../VariableCollection/VariableCollection.cu"
+#include "../ErrorChecking/ErrorChecking.cu"
 
 /*
 	constraints to be checked only if VC is all ground
@@ -25,6 +26,7 @@ struct DeviceQueenConstraints{
 ///////////////////////////////////////////////////////////////////////////////////////
 
 __device__ bool DeviceQueenConstraints::checkRowConstraint(DeviceVariableCollection& vc){
+
 	int sum = 0;
 	for(int j = 0; j < vc.nQueen; ++j){
 		sum = 0;
@@ -35,6 +37,7 @@ __device__ bool DeviceQueenConstraints::checkRowConstraint(DeviceVariableCollect
 	}
 
 	return true;
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -51,11 +54,13 @@ __device__ bool DeviceQueenConstraints::checkColConstraint(DeviceVariableCollect
 	}
 
 	return true;
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
 __device__ bool DeviceQueenConstraints::checkRDiagConstraint(DeviceVariableCollection& vc){
+
 	int sum,i,j,temp;
 
 	for(j = 0; j < vc.nQueen; ++j){
@@ -84,11 +89,13 @@ __device__ bool DeviceQueenConstraints::checkRDiagConstraint(DeviceVariableColle
 		if(sum < 0 || sum > 1) return false;
 	}
 	return true;
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
 __device__ bool DeviceQueenConstraints::checkLDiagConstraint(DeviceVariableCollection& vc){
+
 	int sum,i,j,temp;
 
 	for(j = 0; j < vc.nQueen; ++j){
@@ -118,18 +125,22 @@ __device__ bool DeviceQueenConstraints::checkLDiagConstraint(DeviceVariableColle
 	}
 
 	return true;
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
 __device__ bool DeviceQueenConstraints::solution(DeviceVariableCollection& vc, bool fullParallel){
+
 	if(fullParallel) return parallelConstraints(vc);
 	else return checkRowConstraint(vc) && checkColConstraint(vc) && checkRDiagConstraint(vc) && checkLDiagConstraint(vc);
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
 __global__ void externParallelDiagConstr(int* Mem, int nQueen, bool* okDiags){
+
 	int sum,i,j,what;
 
 	if(threadIdx.x < nQueen)what = 0;
@@ -199,9 +210,11 @@ __global__ void externParallelDiagConstr(int* Mem, int nQueen, bool* okDiags){
 			break;
 		}
 	}
+
 }
 
 __global__ void externParallelAllDiffs(int* Mem, int nQueen, bool* okAllDiffs){
+
 	int sum = 0;
 	for(int i = 0 ; i < nQueen; ++i){
 		if(Mem[i*nQueen+threadIdx.x]==1)
@@ -211,22 +224,27 @@ __global__ void externParallelAllDiffs(int* Mem, int nQueen, bool* okAllDiffs){
 	if(sum != 1){
 		*okAllDiffs = false;
 	}
+
 }
 
 ///////////////////////////////////////////////////////////////////////
 
 __device__ bool DeviceQueenConstraints::parallelConstraints(DeviceVariableCollection& vc){
+
 	cudaStream_t s1,s2;
-	cudaStreamCreateWithFlags(&s1, cudaStreamNonBlocking);
-	cudaStreamCreateWithFlags(&s2, cudaStreamNonBlocking);
+	ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s1, cudaStreamNonBlocking),"DeviceQueenConstraints::parallelConstraints::STREAM CREATION 1");
+	ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s2, cudaStreamNonBlocking),"DeviceQueenConstraints::parallelConstraints::STREAM CREATION 2");
 	__shared__	bool res1, res2;
 	res1 = res2 = true;
 	externParallelAllDiffs<<<1,vc.nQueen,0,s1>>>(vc.dMem,vc.nQueen,&res1);
-	cudaStreamDestroy(s1);
+	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceQueenConstraints::parallelConstraints::EXTERN PARALLEL ALL DIFFS");
+	ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s1),"DeviceQueenConstraints::parallelConstraints::STREAM DESTRUCTION 1");
 	externParallelDiagConstr<<<1,vc.nQueen*4,0,s2>>>(vc.dMem,vc.nQueen,&res2);
-	cudaStreamDestroy(s2);
-	cudaDeviceSynchronize();
+	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceQueenConstraints::parallelConstraints::EXTERN PARALLEL DIAGS DIFFS");
+	ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s2),"DeviceQueenConstraints::parallelConstraints::STREAM DESTRUCTION 2");
+	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceQueenConstraints::parallelConstraints::SYNCH");
 	return res1 && res2;;
+
 }
 
 ///////////////////////////////////////////////////////////////////////
