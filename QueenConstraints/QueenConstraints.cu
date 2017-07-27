@@ -9,23 +9,23 @@ struct DeviceQueenConstraints{
 
 	//////////////////////////////////////SINGLE THREAD//////////////////////////////////////
 
-	__device__ bool checkRowConstraint(DeviceVariableCollection&);		//
-	__device__ bool checkColConstraint(DeviceVariableCollection&);		//specific implementation
-	__device__ bool checkRDiagConstraint(DeviceVariableCollection&);	//for queen problem
-	__device__ bool checkLDiagConstraint(DeviceVariableCollection&);	//
+	__device__ bool static inline checkRowConstraint(DeviceVariableCollection&);		//
+	__device__ bool static inline checkColConstraint(DeviceVariableCollection&);		//specific implementation
+	__device__ bool static inline checkRDiagConstraint(DeviceVariableCollection&);	//for queen problem
+	__device__ bool static inline checkLDiagConstraint(DeviceVariableCollection&);	//
 																		
 	//////////////////////////////////////MULTI THREAD//////////////////////////////////////
 
-	__device__ bool parallelConstraints(DeviceVariableCollection&);		//specific for queen problem
+	__device__ bool static inline parallelConstraints(DeviceVariableCollection&);		//specific for queen problem
 
 	////////////////////////////////////////////////////////////////////////////////////////
 
-	__device__ bool solution(DeviceVariableCollection&,bool);			//check solution	
+	__device__ bool static inline solution(DeviceVariableCollection&,bool);			//check solution	
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
-__device__ bool DeviceQueenConstraints::checkRowConstraint(DeviceVariableCollection& vc){
+__device__ bool inline DeviceQueenConstraints::checkRowConstraint(DeviceVariableCollection& vc){
 
 	int sum = 0;
 	for(int j = 0; j < vc.nQueen; ++j){
@@ -42,7 +42,7 @@ __device__ bool DeviceQueenConstraints::checkRowConstraint(DeviceVariableCollect
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
-__device__ bool DeviceQueenConstraints::checkColConstraint(DeviceVariableCollection& vc){
+__device__ bool inline DeviceQueenConstraints::checkColConstraint(DeviceVariableCollection& vc){
 
 	int sum = 0;
 	for(int j = 0; j < vc.nQueen; ++j){
@@ -59,7 +59,7 @@ __device__ bool DeviceQueenConstraints::checkColConstraint(DeviceVariableCollect
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
-__device__ bool DeviceQueenConstraints::checkRDiagConstraint(DeviceVariableCollection& vc){
+__device__ bool inline DeviceQueenConstraints::checkRDiagConstraint(DeviceVariableCollection& vc){
 
 	int sum,i,j,temp;
 
@@ -94,7 +94,7 @@ __device__ bool DeviceQueenConstraints::checkRDiagConstraint(DeviceVariableColle
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
-__device__ bool DeviceQueenConstraints::checkLDiagConstraint(DeviceVariableCollection& vc){
+__device__ bool inline DeviceQueenConstraints::checkLDiagConstraint(DeviceVariableCollection& vc){
 
 	int sum,i,j,temp;
 
@@ -130,7 +130,7 @@ __device__ bool DeviceQueenConstraints::checkLDiagConstraint(DeviceVariableColle
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
-__device__ bool DeviceQueenConstraints::solution(DeviceVariableCollection& vc, bool fullParallel){
+__device__ bool inline DeviceQueenConstraints::solution(DeviceVariableCollection& vc, bool fullParallel){
 
 	if(fullParallel) return parallelConstraints(vc);
 	else return checkRowConstraint(vc) && checkColConstraint(vc) && checkRDiagConstraint(vc) && checkLDiagConstraint(vc);
@@ -229,7 +229,7 @@ __global__ void externParallelAllDiffs(int* Mem, int nQueen, bool* okAllDiffs){
 
 ///////////////////////////////////////////////////////////////////////
 
-__device__ bool DeviceQueenConstraints::parallelConstraints(DeviceVariableCollection& vc){
+__device__ bool inline DeviceQueenConstraints::parallelConstraints(DeviceVariableCollection& vc){
 
 	cudaStream_t s1,s2;
 	ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s1, cudaStreamNonBlocking),"DeviceQueenConstraints::parallelConstraints::STREAM CREATION 1");

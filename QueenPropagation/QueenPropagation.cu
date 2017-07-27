@@ -4,37 +4,28 @@
 
 struct DeviceQueenPropagation{
 
-	__device__ DeviceQueenPropagation();			//do nothing
-	__device__ ~DeviceQueenPropagation();			//do nothing
-
-
 	//////////////////////////////////////SINGLE THREAD//////////////////////////////////////
 
-	__device__ int nextAssign(DeviceVariableCollection&,int);		//assign next value not already tried
+	__device__ int static inline nextAssign(DeviceVariableCollection&,int);		//assign next value not already tried
 																	//returns assigned value
 
-	__device__ int allDifferent(DeviceVariableCollection&,int,int,int);		//propagate for all different constraint code 3
-	__device__ int diagDifferent(DeviceVariableCollection&,int,int,int);	//propagate for diag constraint code 4
+	__device__ int static inline allDifferent(DeviceVariableCollection&,int,int,int);		//propagate for all different constraint code 3
+	__device__ int static inline diagDifferent(DeviceVariableCollection&,int,int,int);	//propagate for diag constraint code 4
 
-	__device__ int forwardPropagation(DeviceVariableCollection&,int,int);	//csp forward propagation code 5
-	__device__ int undoForwardPropagation(DeviceVariableCollection&);		//csp undo forward propagation
+	__device__ int static inline forwardPropagation(DeviceVariableCollection&,int,int);	//csp forward propagation code 5
+	__device__ int static inline undoForwardPropagation(DeviceVariableCollection&);		//csp undo forward propagation
 
 	//////////////////////////////////////MULTI THREAD//////////////////////////////////////
 
-	__device__ int parallelPropagation(DeviceVariableCollection&,int,int,int); 		//propagation multithread code 2
-	__device__ int parallelForwardPropagation(DeviceVariableCollection&,int,int);	//forward, uses parallelPropagation code 5
-	__device__ int parallelUndoForwardPropagation(DeviceVariableCollection&);		//csp undo forward propagation
+	__device__ int static inline parallelPropagation(DeviceVariableCollection&,int,int,int); 		//propagation multithread code 2
+	__device__ int static inline parallelForwardPropagation(DeviceVariableCollection&,int,int);	//forward, uses parallelPropagation code 5
+	__device__ int static inline parallelUndoForwardPropagation(DeviceVariableCollection&);		//csp undo forward propagation
 
 };
 
 ////////////////////////////////////////////////////////////////////////////
 
-__device__ DeviceQueenPropagation::DeviceQueenPropagation(){}
-
-
-////////////////////////////////////////////////////////////////////////////
-
-__device__ int DeviceQueenPropagation::nextAssign(DeviceVariableCollection& vc, int var){
+__device__ int inline DeviceQueenPropagation::nextAssign(DeviceVariableCollection& vc, int var){
 
 	if(var < 0 || var >= vc.nQueen){
 		ErrorChecking::deviceError("Error::DeviceQueenPropagation::nextAssign::VAR OUT OF BOUND");
@@ -67,7 +58,7 @@ __device__ int DeviceQueenPropagation::nextAssign(DeviceVariableCollection& vc, 
 
 ////////////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceQueenPropagation::allDifferent(DeviceVariableCollection& vc, int var, int val, int delta){
+__device__ int inline DeviceQueenPropagation::allDifferent(DeviceVariableCollection& vc, int var, int val, int delta){
 
 	if(var < 0 || var > vc.nQueen || val < 0 || val > vc.nQueen){
 		ErrorChecking::deviceError("Error::DeviceQueenPropagation::allDifferent::OUT OF BOUND");
@@ -93,7 +84,7 @@ __device__ int DeviceQueenPropagation::allDifferent(DeviceVariableCollection& vc
 
 ////////////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceQueenPropagation::diagDifferent(DeviceVariableCollection& vc, int var, int val, int delta){
+__device__ int inline DeviceQueenPropagation::diagDifferent(DeviceVariableCollection& vc, int var, int val, int delta){
 
 	if(var < 0 || var > vc.nQueen || val < 0 || val > vc.nQueen){
 		ErrorChecking::deviceError("Error::DeviceQueenPropagation::diagDifferent::OUT OF BOUND");
@@ -136,7 +127,7 @@ __device__ int DeviceQueenPropagation::diagDifferent(DeviceVariableCollection& v
 
 ////////////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceQueenPropagation::forwardPropagation(DeviceVariableCollection& vc, int var, int val){
+__device__ int inline DeviceQueenPropagation::forwardPropagation(DeviceVariableCollection& vc, int var, int val){
 
 	if(var < 0 || var > vc.nQueen){
 		ErrorChecking::deviceError("Error::DeviceQueenPropagation::forwardPropagation:: VAR OUT OF BOUND");
@@ -179,7 +170,7 @@ __device__ int DeviceQueenPropagation::forwardPropagation(DeviceVariableCollecti
 
 ////////////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceQueenPropagation::undoForwardPropagation(DeviceVariableCollection& vc){
+__device__ int inline DeviceQueenPropagation::undoForwardPropagation(DeviceVariableCollection& vc){
 
 	if(vc.deviceQueue.front()->cs!=5){
 		ErrorChecking::deviceError("Error::DeviceQueenPropagation::undoForwardPropagation::ERROR IN QUEUE");
@@ -218,10 +209,6 @@ __device__ int DeviceQueenPropagation::undoForwardPropagation(DeviceVariableColl
 
 ////////////////////////////////////////////////////////////////////////////
 
-__device__ DeviceQueenPropagation::~DeviceQueenPropagation(){}
-
-////////////////////////////////////////////////////////////////////////////
-
 __global__ void externPropagation(DeviceVariableCollection& vc, int var, int val, int nQueen,int delta){
 
 	int col = int((threadIdx.x + blockIdx.x * blockDim.x % (nQueen * nQueen))%nQueen);
@@ -240,7 +227,7 @@ __global__ void externPropagation(DeviceVariableCollection& vc, int var, int val
 
 }
 
-__device__ int DeviceQueenPropagation::parallelPropagation(DeviceVariableCollection& vc,int var,int val,int delta){
+__device__ int inline DeviceQueenPropagation::parallelPropagation(DeviceVariableCollection& vc,int var,int val,int delta){
 
 	if(var < 0 || var > vc.nQueen || val < 0 || val > vc.nQueen){
 		ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelPropagation::OUT OF BOUND");
@@ -266,7 +253,7 @@ __device__ int DeviceQueenPropagation::parallelPropagation(DeviceVariableCollect
 
 ////////////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceQueenPropagation::parallelForwardPropagation(DeviceVariableCollection& vc, int var, int val){
+__device__ int inline DeviceQueenPropagation::parallelForwardPropagation(DeviceVariableCollection& vc, int var, int val){
 
 	if(var < 0 || var > vc.nQueen){
 		ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation::VAR OUT OF BOUND");
@@ -306,7 +293,7 @@ __device__ int DeviceQueenPropagation::parallelForwardPropagation(DeviceVariable
 
 ////////////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceQueenPropagation::parallelUndoForwardPropagation(DeviceVariableCollection& vc){
+__device__ int inline DeviceQueenPropagation::parallelUndoForwardPropagation(DeviceVariableCollection& vc){
 
 	if(vc.deviceQueue.front()->cs!=5){
 		ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelUndoForwardPropagation::ERROR IN QUEUE");
