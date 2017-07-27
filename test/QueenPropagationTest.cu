@@ -1,7 +1,7 @@
 #include <stdio.h>
-#include "../QueenPropagation/QueenPropagation2.cu"
-#include "../VariableCollection/VariableCollection2.cu"
-#include "../QueenConstraints/QueenConstraints2.cu"
+#include "../QueenPropagation/QueenPropagation.cu"
+#include "../VariableCollection/VariableCollection.cu"
+#include "../QueenConstraints/QueenConstraints.cu"
 
 __device__ DeviceVariableCollection deviceVariableCollection1;
 __device__ DeviceVariableCollection deviceVariableCollection2;

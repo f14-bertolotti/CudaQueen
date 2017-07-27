@@ -4,19 +4,25 @@
 #include "./QueenConstraints/QueenConstraints.cu"
 #include "./QueenPropagation/QueenPropagation.cu"
 #include "./TripleQueue/TripleQueue.cu"
-#include "./WorkSet/WorkSet.cu"
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-__device__ const int nVars=8;
-__device__ const int nVals=8;
+/*
+	nuovo cuda queen, utilizza le nuove strutture che permettono
+	una esecuzione parallela di alcuni dei task che sono più
+	dispensiosi dal punto di vista del tempo (utilizza chiamate dinamiche),
+	i task in questione sono propagazione (sia in avanti che indietro),
+	anche controllo dei vincoli.
+	sei si alza troppo il valore di nQueen l'algoritmo potrebbe non funzionare
+	a causa di un utilizzo maggior rispetto al consentito.
+	il flusso di esecuzione principale è unico
+*/
 
-__device__ QueenConstraints qc;
-__device__ Variable vs[nVars];
-__device__ VariableCollection vc;
-__device__ TripleQueue tq;
-__device__ QueenPropagation qp;
-__device__ WorkSet ws;
+__device__ const int nQueen=9;
+
+__device__ DeviceQueenConstraints deviceQueenConstraints;
+__device__ DeviceQueenPropagation deviceQueenPropagation;
+__device__ DeviceVariableCollection deviceVariableCollection;
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -27,25 +33,26 @@ __global__ void test(){
 	int nSols = 0;
 	bool done = false;
 	do{
-		if(level == nVars){
-			if(vc.isSolution()){
+		//deviceVariableCollection.print();
+		if(level == nQueen){
+			if(deviceQueenConstraints.solution(deviceVariableCollection,false)){
 				++nSols;
 			}
-			qp.undoForwardPropagation();
+			deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection);
 			--level;			
 		}else{
 
-			val = qp.nextAssign(level);
+			val = deviceQueenPropagation.nextAssign(deviceVariableCollection,level);
 			if(val == -1){
 				if(level == 0) done = true;
 				else{
-					qp.undoForwardPropagation();
+					deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection);
 					--level;
 				}
 			}else{
-				qp.forwardPropagation(level,val);
-				if(vc.isFailed()){
-					qp.undoForwardPropagation();
+				deviceQueenPropagation.parallelForwardPropagation(deviceVariableCollection,level,val);
+				if(deviceVariableCollection.isFailed()){
+					deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection);
 					--level;
 				}
 				++level;
@@ -58,15 +65,22 @@ __global__ void test(){
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-void init();
-__global__ void init(int*,int*,Triple*);
+__global__ void init(DeviceVariable*,Triple*, int*,int*,int);
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 int main(){
 
+    cudaDeviceSetLimit(cudaLimitPrintfFifoSize, sizeof(char)*999999999);
 
-	init();
+	HostVariableCollection hostVariableCollection(nQueen);
+	init<<<1,1>>>(hostVariableCollection.dMemVariables,
+				 hostVariableCollection.hostQueue.dMem,
+				 hostVariableCollection.dMem,
+				 hostVariableCollection.dMemlastValues,
+				 hostVariableCollection.nQueen);
+	cudaDeviceSynchronize();
+
 
     cudaEvent_t     start, stop;
     cudaEventCreate( &start );
@@ -87,33 +101,11 @@ int main(){
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-__global__ void init(int* dLastValuesMem, int* dVarsMem, Triple* dQueueMem){
-
-	qc.init(nVars,nVals);
-	for(int i = 0; i < nVars; ++i)
-		vs[i].init(&dVarsMem[nVars*i],nVals);
-	vc.init(vs,&qc,nVars,nVals);
-	tq.init(dQueueMem,nVars,nVals);
-	qp.init(&vc,dLastValuesMem,&tq,nVars,nVals);
-	ws.init(&vc,&qc,&qp,nVars,nVals);
-	
+__global__ void init(DeviceVariable* variables,Triple* queue, int* varMem, int* lastValsMem, int nQueen){
+	deviceVariableCollection.init(variables,queue,varMem,lastValsMem,nQueen);
+	deviceVariableCollection.dbg = false;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////
-
-void init(){
-
-	/*device allocation*/
-	int* dLastValuesMem = NULL;
-	int* dVarsMem = NULL;
-	Triple* dQueueMem = NULL;
-
-	cudaMalloc((void**)&dLastValuesMem,sizeof(int)*nVars);
-	cudaMalloc((void**)&dVarsMem,sizeof(int)*nVars*nVals);
-	cudaMalloc((void**)&dQueueMem,sizeof(Triple)*3*nVars*nVals);
-
-	init<<<1,1>>>(dLastValuesMem,dVarsMem,dQueueMem);
-}
 
 
 

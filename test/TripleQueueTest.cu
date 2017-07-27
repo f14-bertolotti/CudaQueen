@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "../TripleQueue/TripleQueue2.cu"
+#include "../TripleQueue/TripleQueue.cu"
 
 __device__ DeviceQueue deviceQueue;
 

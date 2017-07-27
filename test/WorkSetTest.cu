@@ -1,5 +1,5 @@
-#include "../WorkSet/WorkSet2.cu"
-#include "../QueenConstraints/QueenConstraints2.cu"
+#include "../WorkSet/WorkSet.cu"
+#include "../QueenConstraints/QueenConstraints.cu"
 
 __device__ DeviceWorkSet deviceWorkSet;
 __device__ DeviceQueenConstraints deviceQueenConstraints;

@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "../Variable/Variable2.cu"
+#include "../Variable/Variable.cu"
 
 __device__ DeviceVariable dv;
 

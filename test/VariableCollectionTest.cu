@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include "../VariableCollection/VariableCollection2.cu"
-#include "../QueenConstraints/QueenConstraints2.cu"
+#include "../VariableCollection/VariableCollection.cu"
+#include "../QueenConstraints/QueenConstraints.cu"
 
 
 __device__ DeviceVariableCollection deviceVariableCollection;
