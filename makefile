@@ -5,9 +5,6 @@ NCCFLAGS	= --std=c++11 -g -G -arch=sm_35 -rdc=true
 LIB			= -L/usr/lib/x86_64-linux-gnu/
 
 
-make1:
-	$(NCC) ./test/MemoryManagementTest.cu -o ./bin/RMEMTEST $(NCCFLAGS) $(LIB)
-
 make2:
 	$(NCC) ./test/VariableTest.cu -o ./bin/VTEST $(NCCFLAGS) $(LIB)
 
@@ -29,8 +26,6 @@ make7:
 
 
 
-run1-memcheck:
-	cuda-memcheck ./bin/RMEMTEST
 
 run2-memcheck:
 	cuda-memcheck ./bin/VTEST
@@ -52,9 +47,6 @@ run7-memcheck:
 
 
 
-run1: 
-	./bin/RMEMTEST
-
 run2:
 	./bin/VTEST
 
@@ -75,9 +67,6 @@ run7:
 
 
 
-clean1:
-	rm ./bin/RMEMTEST
-
 clean2:
 	rm ./bin/VTEST
 
@@ -97,4 +86,4 @@ clean7:
 	rm ./bin/WSTEST
 
 
-all: make1 make2 make3 make4 make5 make6 make7
+all: make2 make3 make4 make5 make6 make7

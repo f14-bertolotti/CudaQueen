@@ -1,6 +1,5 @@
 #pragma once
 #include "../Variable/Variable.cu"
-#include "../MemoryManagement/MemoryManagement.cu"
 #include "../TripleQueue/TripleQueue.cu"
 
 ///////////////////////////////////////////////////////////////////////
