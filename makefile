@@ -23,7 +23,8 @@ make6:
 make7:
 	$(NCC) ./test/WorkSetTest.cu -o ./bin/WSTEST $(NCCFLAGS) $(LIB)
 
-
+make8:
+	$(NCC) ./test/MemoryManagementTest.cu -o ./bin/MMTEST $(NCCFLAGS) $(LIB)
 
 
 
@@ -45,6 +46,8 @@ run6-memcheck:
 run7-memcheck:
 	cuda-memcheck ./bin/WSTEST
 
+run8-memcheck:
+	cuda-memcheck ./bin/MMTEST
 
 
 run2:
@@ -65,6 +68,8 @@ run6:
 run7: 
 	./bin/WSTEST
 
+run8: 
+	./bin/MMTEST
 
 
 clean2:
@@ -85,5 +90,8 @@ clean6:
 clean7:
 	rm ./bin/WSTEST
 
+clean8:
+	rm ./bin/MMTEST
 
-all: make2 make3 make4 make5 make6 make7
+
+all: make2 make3 make4 make5 make6 make7 make8

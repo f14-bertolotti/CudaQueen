@@ -3,6 +3,7 @@
 #include "../TripleQueue/TripleQueue.cu"
 #include "../VariableCollection/VariableCollection.cu"
 #include "../QueenPropagation/QueenPropagation.cu"
+#include "../QueenConstraints/QueenConstraints.cu"
 #include "../ErrorChecking/ErrorChecking.cu"
 #include <cstdio>
 
@@ -223,6 +224,8 @@ __device__ DeviceWorkSet::~DeviceWorkSet(){}
 __global__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, int level, int nValues, int nQueen){
 
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
+
+	__shared__ DeviceVariableCollection deviceVariableCollection;
 
 	DeviceQueenPropagation deviceQueenPropagation;
 

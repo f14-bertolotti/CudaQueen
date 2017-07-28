@@ -126,7 +126,7 @@ __device__ void DeviceQueue::pop(){
 __device__ Triple* DeviceQueue::front(){
 
 	if(count == 0){
-		ErrorChecking::deviceError("Error::DeviceQueue::front::EMPTY QUEUE\n");
+		ErrorChecking::deviceError("Error::DeviceQueue::front::EMPTY QUEUE");
 		return NULL;
 	}
 

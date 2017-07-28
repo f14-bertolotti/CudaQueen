@@ -73,7 +73,7 @@ __global__ void init(DeviceVariable*,Triple*, int*,int*,int);
 int main(){
 
     cudaDeviceSetLimit(cudaLimitPrintfFifoSize, sizeof(char)*999999999);
-	cudaDeviceSetLimit(cudaLimitDevRuntimeSyncDepth, nQueen*2);
+	cudaDeviceSetLimit(cudaLimitDevRuntimeSyncDepth, 0);
 
 	HostVariableCollection hostVariableCollection(nQueen);
 	init<<<1,1>>>(hostVariableCollection.deviceVariableMem,
