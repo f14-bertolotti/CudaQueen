@@ -19,7 +19,7 @@
 	il flusso di esecuzione principale è unico
 */
 
-__device__ const int nQueen = 8;
+__device__ const int nQueen = 12;
 
 __device__ DeviceQueenConstraints deviceQueenConstraints;
 __device__ DeviceQueenPropagation deviceQueenPropagation;
@@ -30,34 +30,41 @@ __device__ DeviceVariableCollection deviceVariableCollection;
 __global__ void test(){
 
 	int level = 0;
+	int levelUp = 1;
 	int val = 0;
 	int nSols = 0;
 	bool done = false;
 
 	do{
-
-		if(level == nQueen){
+		if(level == nQueen || deviceVariableCollection.isGround()){
 			if(deviceQueenConstraints.solution(deviceVariableCollection,true)){
 				++nSols;
 			}
 			deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection);
 			--level;			
 		}else{
+			if(deviceVariableCollection.deviceVariable[level].ground < 0){
+				val = deviceQueenPropagation.nextAssign(deviceVariableCollection,level);
+				if(val == -1){
+					if(level == 0){
+						done = true;
+					}else{
+						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection);
+						level -= levelUp;
+						levelUp = 1;
+					}
+				}else{
+					deviceQueenPropagation.parallelForwardPropagation(deviceVariableCollection,level,val);
 
-			val = deviceQueenPropagation.nextAssign(deviceVariableCollection,level);
-			if(val == -1){
-				if(level == 0) done = true;
-				else{
-					deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection);
-					--level;
+					if(deviceVariableCollection.isFailed()){
+						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection);
+						--level;
+					}
+					++level;
 				}
 			}else{
-				deviceQueenPropagation.parallelForwardPropagation(deviceVariableCollection,level,val);
-				if(deviceVariableCollection.isFailed()){
-					deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection);
-					--level;
-				}
 				++level;
+				++levelUp;
 			}
 		}
 	}while(!done);

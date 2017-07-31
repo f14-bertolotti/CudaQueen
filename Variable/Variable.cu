@@ -153,7 +153,6 @@ __device__ inline int DeviceVariable::assign(int value){
 	}
 
 
-
 	if(!fullParallel)externAssignSequential(domain, domainSize, value);
 	else{
 		cudaStream_t s;

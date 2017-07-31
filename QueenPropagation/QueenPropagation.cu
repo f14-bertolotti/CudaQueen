@@ -352,10 +352,10 @@ __global__ void externParallelForwardPropagation(DeviceVariableCollection& vc, i
 
 	//------------------------------------forward propagation
 
-	int col = int((int(index/temp.nQueen) % (temp.nQueen * temp.nQueen))%temp.nQueen);
-	int row = int(((int(index/temp.nQueen) % (temp.nQueen * temp.nQueen))/temp.nQueen) % temp.nQueen);
-
 	do{
+
+		int col = int((int(index/temp.nQueen) % (temp.nQueen * temp.nQueen))%temp.nQueen);
+		int row = int(((int(index/temp.nQueen) % (temp.nQueen * temp.nQueen))/temp.nQueen) % temp.nQueen);
 
 		changed = false;
 
