@@ -19,6 +19,7 @@ struct DeviceQueenPropagation{
 
 	__device__ int static inline parallelPropagation(DeviceVariableCollection&,int,int,int); 		//propagation multithread code 2
 	__device__ int static inline parallelForwardPropagation(DeviceVariableCollection&,int,int);	//forward, uses parallelPropagation code 5
+	__device__ int static inline parallelForwardPropagation2(DeviceVariableCollection&,int,int);	//forward, uses parallelPropagation code 5
 	__device__ int static inline parallelUndoForwardPropagation(DeviceVariableCollection&);		//csp undo forward propagation
 
 };
@@ -253,6 +254,268 @@ __device__ int inline DeviceQueenPropagation::parallelPropagation(DeviceVariable
 
 ////////////////////////////////////////////////////////////////////////////
 
+__global__ void externParallelForwardPropagation(DeviceVariableCollection& vc, int val, int var){
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+
+	extern __shared__ double sharedData[];
+	__shared__ DeviceVariableCollection temp;
+	__shared__ bool changed;
+
+	//------------------------------------initialization
+
+	if(index == 0 && vc.nQueen%2 == 0){
+
+		temp.init2((DeviceVariable*)&sharedData[vc.nQueen*vc.nQueen/2 + vc.nQueen/2 + int(vc.nQueen*vc.nQueen*3*1.5)],
+				  (Triple*)&sharedData[vc.nQueen*vc.nQueen/2 + vc.nQueen/2],
+				  (int*)sharedData,
+				  (int*)&sharedData[vc.nQueen*vc.nQueen/2],
+				  vc.nQueen);
+
+	}else if(index == 0 && vc.nQueen%2 == 1){
+		temp.init2((DeviceVariable*)&sharedData[vc.nQueen*vc.nQueen/2 + vc.nQueen/2 + int((vc.nQueen*vc.nQueen*3+1)*1.5)+1],
+				  (Triple*)&sharedData[vc.nQueen*vc.nQueen/2 + vc.nQueen/2+1],
+				  (int*)sharedData,
+				  (int*)&sharedData[vc.nQueen*vc.nQueen/2+1],
+				  vc.nQueen);
+	}
+
+	__syncthreads();
+
+	//------------------------------------copy
+
+	if(index == 0){
+
+		temp.deviceQueue.count = vc.deviceQueue.count;
+
+	}
+
+	if(index < temp.nQueen*temp.nQueen){
+
+		temp.dMem[index] = vc.dMem[index];
+
+	}
+
+	if(index >= temp.nQueen*temp.nQueen && index < temp.nQueen*temp.nQueen + temp.nQueen){
+
+		temp.lastValues[index%temp.nQueen] = vc.lastValues[index%temp.nQueen];
+
+	}
+
+	if(index >= temp.nQueen*temp.nQueen + temp.nQueen && index < temp.nQueen*temp.nQueen + temp.nQueen + temp.nQueen*temp.nQueen*3){
+
+		temp.deviceQueue.q[index%(temp.nQueen*temp.nQueen*3)] = vc.deviceQueue.q[index%(temp.nQueen*temp.nQueen*3)];
+
+	}
+
+	if(index >= temp.nQueen*temp.nQueen + temp.nQueen + temp.nQueen*temp.nQueen*3 && temp.nQueen*temp.nQueen + temp.nQueen*2 + temp.nQueen*temp.nQueen*3){
+
+		temp.deviceVariable[index%temp.nQueen].ground = vc.deviceVariable[index%temp.nQueen].ground;
+		temp.deviceVariable[index%temp.nQueen].failed = vc.deviceVariable[index%temp.nQueen].failed;
+		temp.deviceVariable[index%temp.nQueen].changed = vc.deviceVariable[index%temp.nQueen].changed;
+		
+	}
+
+	__syncthreads();
+
+	//------------------------------------first propagation
+
+	if(index < temp.nQueen*temp.nQueen){
+
+		int col = int((index % (temp.nQueen * temp.nQueen))%temp.nQueen);
+		int row = int(((index % (temp.nQueen * temp.nQueen))/temp.nQueen) % temp.nQueen);
+
+		if(row != var && val == col){
+
+			temp.deviceVariable[row].addTo(col,-1);
+
+		}
+		
+		if(row != var && col == row && col+val-var < temp.nQueen && col+val-var >= 0){
+
+			temp.deviceVariable[row].addTo(col+val-var,-1);
+
+		}
+		
+		if(row != var && temp.nQueen-col == row && col-(temp.nQueen-val)+var < temp.nQueen && col-(temp.nQueen-val)+var >= 0){
+
+			temp.deviceVariable[row].addTo(col-(temp.nQueen-val)+var,-1);
+
+		}
+
+	}
+
+	if(index == 0){
+		temp.deviceQueue.add(var,val,6);
+	}
+
+	__syncthreads();
+
+	//------------------------------------forward propagation
+
+	int col = int((int(index/temp.nQueen) % (temp.nQueen * temp.nQueen))%temp.nQueen);
+	int row = int(((int(index/temp.nQueen) % (temp.nQueen * temp.nQueen))/temp.nQueen) % temp.nQueen);
+
+	do{
+
+		changed = false;
+
+		if(index < temp.nQueen){
+			temp.deviceVariable[index].checkGround();
+		}
+
+		if(index >=temp.nQueen && index < 2*temp.nQueen){
+			temp.deviceVariable[index-temp.nQueen].checkFailed();
+		}
+
+		__syncthreads();
+
+		if(temp.deviceVariable[index%temp.nQueen].changed == 1){
+
+			temp.deviceVariable[index%temp.nQueen].changed = -1;
+
+			if(temp.deviceVariable[index%temp.nQueen].ground >= 0 &&
+			   index < temp.nQueen*temp.nQueen*temp.nQueen){
+
+				int var = index % temp.nQueen;
+				int val = temp.deviceVariable[index%temp.nQueen].ground;
+
+				if(row != var && val == col){
+
+					int old = atomicSub(&temp.deviceVariable[row].domain[col],1);
+					if(old == 1){
+						changed = true;
+						temp.deviceVariable[row].changed = 1;
+					}
+
+				}
+				
+				if(row != var && col == row && col+val-var < temp.nQueen && col+val-var >= 0){
+
+					int old = atomicSub(&temp.deviceVariable[row].domain[col+val-var],1);
+					if(old == 1){
+						changed = true;
+						temp.deviceVariable[row].changed = 1;
+					}
+
+				}
+				
+				if(row != var && temp.nQueen-col == row && col-(temp.nQueen-val)+var < temp.nQueen && col-(temp.nQueen-val)+var >= 0){
+
+					int old = atomicSub(&temp.deviceVariable[row].domain[col-(temp.nQueen-val)+var],1);
+					if(old == 1){
+						changed = true;
+						temp.deviceVariable[row].changed = 1;
+					}
+
+				}
+
+				if(row == 0 && col == 0){
+					//printf("var %d val %d\n",var,val);
+					int old = atomicAdd(&temp.deviceQueue.count,1);
+					temp.deviceQueue.q[old].var = var;
+					temp.deviceQueue.q[old].val = val;
+					temp.deviceQueue.q[old].cs = 6;
+				}
+			}
+		}
+
+		__syncthreads();
+
+	}while(changed);
+
+	//------------------------------------ending
+
+	if(index < temp.nQueen){
+		temp.deviceVariable[index].checkGround();
+		temp.deviceVariable[index].checkFailed();
+	}
+
+	if(index == temp.nQueen){
+		temp.deviceQueue.add(var,val,5);
+	}
+
+	__syncthreads();
+
+	//------------------------------------copy back
+	if(index == 0){
+
+		vc.deviceQueue.count = temp.deviceQueue.count;
+
+	}
+
+	if(index < temp.nQueen*temp.nQueen){
+
+		vc.dMem[index] = temp.dMem[index];
+
+	}
+
+	if(index >= temp.nQueen*temp.nQueen && index < temp.nQueen*temp.nQueen + temp.nQueen){
+
+		vc.lastValues[index%temp.nQueen] = vc.lastValues[index%temp.nQueen];
+
+	}
+
+	if(index >= temp.nQueen*temp.nQueen + temp.nQueen && index < temp.nQueen*temp.nQueen + temp.nQueen + temp.nQueen*temp.nQueen*3){
+
+		vc.deviceQueue.q[index%(temp.nQueen*temp.nQueen*3)] = temp.deviceQueue.q[index%(temp.nQueen*temp.nQueen*3)];
+
+	}
+
+	if(index >= temp.nQueen*temp.nQueen + temp.nQueen + temp.nQueen*temp.nQueen*3 && temp.nQueen*temp.nQueen + temp.nQueen*2 + temp.nQueen*temp.nQueen*3){
+
+		vc.deviceVariable[index%temp.nQueen].ground = temp.deviceVariable[index%temp.nQueen].ground;
+		vc.deviceVariable[index%temp.nQueen].failed = temp.deviceVariable[index%temp.nQueen].failed;
+		vc.deviceVariable[index%temp.nQueen].changed = temp.deviceVariable[index%temp.nQueen].changed;
+		
+	}
+}
+
+__device__ int inline DeviceQueenPropagation::parallelForwardPropagation2(DeviceVariableCollection& vc, int var, int val){
+
+	if(var < 0 || var > vc.nQueen){
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation::VAR OUT OF BOUND");
+		return -1;
+	}
+
+	if(val < 0 || val > vc.nQueen){
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation::VAL OUT OF BOUND");
+		return -1;
+	}
+
+	if(vc.deviceVariable[var].ground != val){
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation::VARIABLE NOT GROUND");
+		return -1;
+	}
+
+	cudaStream_t s;
+	ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceQueenPropagation::parallelForwardPropagation::STREAM CREATION");
+
+	if(vc.nQueen % 2 == 0){
+
+		externParallelForwardPropagation<<<1,vc.nQueen*vc.nQueen*vc.nQueen, 
+		vc.nQueen*vc.nQueen*sizeof(int) + 
+		vc.nQueen*sizeof(int) + 
+		vc.nQueen*vc.nQueen*3*sizeof(Triple) +
+		vc.nQueen*sizeof(DeviceVariable),s>>>(vc,val,var);
+
+	}else{
+
+		externParallelForwardPropagation<<<1,vc.nQueen*vc.nQueen*vc.nQueen, 
+		vc.nQueen*vc.nQueen*sizeof(int) + 
+		vc.nQueen*sizeof(int) + 
+		vc.nQueen*vc.nQueen*3*sizeof(Triple) + sizeof(Triple) +
+		vc.nQueen*sizeof(DeviceVariable),s>>>(vc,val,var);	
+
+	}
+
+	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceQueenPropagation::parallelForwardPropagation::EXTERN FORWARD PROPAGATION CALL");
+	ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceQueenPropagation::parallelForwardPropagation::STREAM DESTRUCTION");
+	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceQueenPropagation::parallelForwardPropagation::SYNCH");
+	return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////
+
 __device__ int inline DeviceQueenPropagation::parallelForwardPropagation(DeviceVariableCollection& vc, int var, int val){
 
 	if(var < 0 || var > vc.nQueen){
@@ -293,6 +556,31 @@ __device__ int inline DeviceQueenPropagation::parallelForwardPropagation(DeviceV
 
 ////////////////////////////////////////////////////////////////////////////
 
+__global__ void externCheckAll(DeviceVariableCollection& vc){
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	if(index < vc.nQueen) vc.deviceVariable[index].checkFailed();
+	if(index >= vc.nQueen) vc.deviceVariable[index-vc.nQueen].checkGround();
+}
+
+__global__ void externPropagation2(DeviceVariableCollection& vc, int var, int val, int nQueen,int delta){
+
+	int col = int((threadIdx.x + blockIdx.x * blockDim.x % (nQueen * nQueen))%nQueen);
+	int row = int(((threadIdx.x + blockIdx.x * blockDim.x % (nQueen * nQueen))/nQueen) % nQueen);
+
+	if(row != var && val == col){
+		atomicAdd(&vc.deviceVariable[row].domain[col],1);
+	}
+	
+	if(row != var && col == row && col+val-var < vc.nQueen && col+val-var >= 0){
+		atomicAdd(&vc.deviceVariable[row].domain[col+val-var],1);
+	}
+	
+	if(row != var && vc.nQueen-col == row && col-(vc.nQueen-val)+var < vc.nQueen && col-(vc.nQueen-val)+var >= 0){
+		atomicAdd(&vc.deviceVariable[row].domain[col-(vc.nQueen-val)+var],1);
+	}
+
+}
+
 __device__ int inline DeviceQueenPropagation::parallelUndoForwardPropagation(DeviceVariableCollection& vc){
 
 	if(vc.deviceQueue.front()->cs!=5){
@@ -314,15 +602,23 @@ __device__ int inline DeviceQueenPropagation::parallelUndoForwardPropagation(Dev
 	while(vc.deviceQueue.front()->cs!=5){
 		cudaStream_t s;
 		ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceQueenPropagation::parallelUndoForwardPropagation::STREAM CREATION");
-		externPropagation<<<1,vc.nQueen*vc.nQueen,0,s>>>(vc,vc.deviceQueue.front()->var,vc.deviceQueue.front()->val,vc.nQueen,+1);
+		externPropagation2<<<1,vc.nQueen*vc.nQueen,0,s>>>(vc,vc.deviceQueue.front()->var,vc.deviceQueue.front()->val,vc.nQueen,+1);
 		ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceQueenPropagation::parallelUndoForwardPropagation::EXTERN PROPAGATION CALL");
 		ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceQueenPropagation::parallelUndoForwardPropagation::STREAM DESTRUCTION");
-		ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceQueenPropagation::parallelUndoForwardPropagation::STREAM SYNCH");
 		vc.deviceQueue.pop();
 		if(vc.deviceQueue.empty())break;
 	}
+	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceQueenPropagation::parallelUndoForwardPropagation::STREAM SYNCH");
+
+	cudaStream_t s;
+	ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceQueenPropagation::parallelUndoForwardPropagation::STREAM CREATION");
+	externCheckAll<<<1,vc.nQueen*2,0,s>>>(vc);
+	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceQueenPropagation::parallelUndoForwardPropagation::EXTERN PROPAGATION CALL");
+	ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceQueenPropagation::parallelUndoForwardPropagation::STREAM DESTRUCTION");
 
 	vc.deviceVariable[t1].undoAssign(t2);
+
+	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceQueenPropagation::parallelUndoForwardPropagation::STREAM SYNCH");
 
 	return 0;
 }

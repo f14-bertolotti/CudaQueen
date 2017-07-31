@@ -2,6 +2,7 @@
 #include "../Variable/Variable.cu"
 #include "../TripleQueue/TripleQueue.cu"
 #include "../ErrorChecking/ErrorChecking.cu"
+#include "../MemoryManagement/MemoryManagement.cu"
 
 ///////////////////////////////////////////////////////////////////////
 ////////////////////////HOST SIDE//////////////////////////////////////
@@ -44,7 +45,7 @@ __host__ HostVariableCollection::~HostVariableCollection(){
 
 struct DeviceVariableCollection{
 
-	bool fullParallel;				//chose parallel code
+	int fullParallel;				//chose parallel code
 	int nQueen;						//number of variables and domain size
 	int* lastValues;				//last values array
 	int* dMem;	
@@ -55,7 +56,10 @@ struct DeviceVariableCollection{
 	__device__ DeviceVariableCollection(DeviceVariable*,Triple*, int*,int*,int);	//initialize
 	__device__ void init(DeviceVariable*,Triple*,int*,int*,int);					//initialize
 	__device__ void init2(DeviceVariable*,Triple*,int*,int*,int);					//initialize
+	__device__ void init3(DeviceVariable*,Triple*,int*,int*,int);					//initialize
 	__device__ ~DeviceVariableCollection();											//do nothing
+
+	__device__ DeviceVariableCollection& operator=(const DeviceVariableCollection&);			//copy
 
 	__device__ bool isGround();			//check if every variable is not failed
 	__device__ bool isFailed();			//check if every variable is ground
@@ -126,6 +130,19 @@ __device__ void DeviceVariableCollection::init2(DeviceVariable* dv,Triple* q, in
 
 ///////////////////////////////////////////////////////////////////////
 
+__device__ void DeviceVariableCollection::init3(DeviceVariable* dv,Triple* q, int* vm, int* lv, int nq){
+
+	fullParallel = true;
+	dMem = vm;
+	nQueen = nq;
+	deviceVariable = dv;
+	lastValues = lv;
+	deviceQueue.init(q,nq);
+
+}
+
+///////////////////////////////////////////////////////////////////////
+
 __device__ DeviceVariableCollection::~DeviceVariableCollection(){}
 
 ///////////////////////////////////////////////////////////////////////
@@ -144,6 +161,26 @@ __device__ bool DeviceVariableCollection::isFailed(){
 		if(deviceVariable[i].failed == 1)return true;
 
 	return false;
+}
+
+///////////////////////////////////////////////////////////////////////
+
+__device__ DeviceVariableCollection& DeviceVariableCollection::operator=(const DeviceVariableCollection& other){
+
+	MemoryManagement<Triple>::copy(other.deviceQueue.q, deviceQueue.q, nQueen*nQueen*3);
+	MemoryManagement<int>::copy(other.lastValues, lastValues, nQueen);
+	MemoryManagement<int>::copy(other.dMem, dMem, nQueen*nQueen);
+
+	for(int i = 0; i < nQueen; ++i){
+		deviceVariable[i].ground = other.deviceVariable[i].ground;
+		deviceVariable[i].failed = other.deviceVariable[i].failed;
+		deviceVariable[i].changed = other.deviceVariable[i].changed;
+		deviceVariable[i].domainSize = other.deviceVariable[i].domainSize;		
+	}
+
+	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceVariableCollection::operator=::SYNCH");
+
+	return *this;
 }
 
 ///////////////////////////////////////////////////////////////////////

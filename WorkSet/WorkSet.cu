@@ -225,8 +225,6 @@ __global__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, i
 
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
 
-	__shared__ DeviceVariableCollection deviceVariableCollection;
-
 	DeviceQueenPropagation deviceQueenPropagation;
 
 	if(index < nQueen*nQueen*3*nValues){

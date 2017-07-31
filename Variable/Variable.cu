@@ -9,7 +9,7 @@
 struct HostVariable{
 	
 	int* dMem;						//ptr to memory
-	int DomainSize;					//variable size (cardinality)
+	int domainSize;					//variable size (cardinality)
 
 	__host__ HostVariable(int); 	//allocate memory
 	__host__ int* getPtr();			//return memory ptr;
@@ -19,9 +19,9 @@ struct HostVariable{
 ///////////////////////////////////////////////////////////////////////
 
 __host__ HostVariable::HostVariable(int dm):
-	DomainSize(dm){
+	domainSize(dm){
 	ErrorChecking::hostMessage("Warn::HostVariable::HostVariable::ALLOCATION");
-	ErrorChecking::hostErrorCheck(cudaMalloc((void**)&dMem,sizeof(int)*DomainSize),"HostVariable::HostVariable");
+	ErrorChecking::hostErrorCheck(cudaMalloc((void**)&dMem,sizeof(int)*domainSize),"HostVariable::HostVariable");
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -49,7 +49,7 @@ struct DeviceVariable{
 
 	int* domain;		//ptr to domain memory
 
-	bool fullParallel;	//choose always parallel code execution 
+	int fullParallel;	//choose always parallel code execution 
 
 	__device__ DeviceVariable();			//do nothing
 	__device__ DeviceVariable(int*,int); 	//initialize
@@ -102,6 +102,7 @@ __device__ inline void DeviceVariable::init(int* dMem, int ds){
 ///////////////////////////////////////////////////////////////////////
 
 __device__ inline void DeviceVariable::init2(int* dMem, int ds){
+
 	domainSize = ds;
 	domain = dMem;
 	fullParallel = true;
@@ -280,8 +281,9 @@ __device__ inline void DeviceVariable::print(){
 	if(failed == 1)printf("\033[31mfld:%d\033[0m ", failed);
 	else printf("fld:%d ", failed);
 
-	printf("sz:%d\n", domainSize);
+	printf("sz:%d ", domainSize);
 
+	printf("ptr:%d\n", domain);
 }
 
 ///////////////////////////////////////////////////////////////////////

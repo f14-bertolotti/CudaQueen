@@ -85,7 +85,7 @@ clean5:
 	rm ./bin/QPTEST
 
 clean6:
-	rm ./bin/RCUDA2
+	rm ./bin/RCUDA
 
 clean7:
 	rm ./bin/WSTEST
