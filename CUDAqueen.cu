@@ -19,7 +19,7 @@
 	il flusso di esecuzione principale è unico
 */
 
-__device__ const int nQueen = 12;
+__device__ const int nQueen = 8;
 
 __device__ DeviceQueenConstraints deviceQueenConstraints;
 __device__ DeviceQueenPropagation deviceQueenPropagation;
@@ -36,9 +36,6 @@ __global__ void test(){
 	bool done = false;
 
 	do{
-
-	//	deviceVariableCollection.print();
-
 		if(level == nQueen || deviceVariableCollection.isGround()){
 			if(deviceQueenConstraints.solution(deviceVariableCollection,true)){
 				++nSols;
@@ -68,7 +65,6 @@ __global__ void test(){
 				++levelUp;
 			}
 		}
-
 	}while(!done);
 
 	printf("\033[32mSOLUTIONS FOUND = %d\033[0m\n",nSols);

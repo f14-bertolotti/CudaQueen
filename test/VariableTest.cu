@@ -15,7 +15,7 @@ __global__ void test();
 int main(){
 
 	HostVariable hostVariable(10);
-	init<<<1,1>>>(hostVariable.getPtr(),hostVariable.DomainSize);
+	init<<<1,1>>>(hostVariable.getPtr(),hostVariable.domainSize);
 	test<<<1,1>>>();	
 
 	cudaDeviceSynchronize();

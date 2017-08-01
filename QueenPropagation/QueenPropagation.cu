@@ -209,7 +209,7 @@ __device__ int inline DeviceQueenPropagation::undoForwardPropagation(DeviceVaria
 ////////////////////////////////////////////////////////////////////////////
 
 __global__ void externParallelPropagation(DeviceVariableCollection& vc, int var, int val){
-	
+
 	int index = threadIdx.x +blockIdx.x*blockDim.x;
 	int columnIndex = int((index % (vc.nQueen * vc.nQueen))%vc.nQueen);
 	int rowIndex = int(((index % (vc.nQueen * vc.nQueen))/vc.nQueen) % vc.nQueen);
