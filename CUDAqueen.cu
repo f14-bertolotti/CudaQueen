@@ -36,6 +36,9 @@ __global__ void test(){
 	bool done = false;
 
 	do{
+
+	//	deviceVariableCollection.print();
+
 		if(level == nQueen || deviceVariableCollection.isGround()){
 			if(deviceQueenConstraints.solution(deviceVariableCollection,true)){
 				++nSols;
@@ -54,9 +57,7 @@ __global__ void test(){
 						levelUp = 1;
 					}
 				}else{
-					deviceQueenPropagation.parallelForwardPropagation(deviceVariableCollection,level,val);
-
-					if(deviceVariableCollection.isFailed()){
+					if(deviceQueenPropagation.parallelForwardPropagation(deviceVariableCollection,level,val)){
 						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection);
 						--level;
 					}
@@ -67,6 +68,7 @@ __global__ void test(){
 				++levelUp;
 			}
 		}
+
 	}while(!done);
 
 	printf("\033[32mSOLUTIONS FOUND = %d\033[0m\n",nSols);

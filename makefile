@@ -26,6 +26,8 @@ make7:
 make8:
 	$(NCC) ./test/MemoryManagementTest.cu -o ./bin/MMTEST $(NCCFLAGS) $(LIB)
 
+make9:
+	$(NCC) ./test/parallelForwardPropagationTest.cu -o ./bin/PFPTEST $(NCCFLAGS) $(LIB)
 
 
 run2-memcheck:
@@ -49,6 +51,9 @@ run7-memcheck:
 run8-memcheck:
 	cuda-memcheck ./bin/MMTEST
 
+run9-memcheck:
+	cuda-memcheck ./bin/PFPTEST
+
 
 run2:
 	./bin/VTEST
@@ -70,6 +75,9 @@ run7:
 
 run8: 
 	./bin/MMTEST
+
+run9:
+	./bin/PFPTEST
 
 
 clean2:
@@ -93,5 +101,8 @@ clean7:
 clean8:
 	rm ./bin/MMTEST
 
+clean9:
+	rm ./bin/PFPTEST
 
-all: make2 make3 make4 make5 make6 make7 make8
+
+all: make2 make3 make4 make5 make6 make7 make8 make9

@@ -153,15 +153,12 @@ __device__ inline int DeviceVariable::assign(int value){
 	}
 
 
-	if(!fullParallel)externAssignSequential(domain, domainSize, value);
-	else{
-		cudaStream_t s;
-		ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceVariable::assign");
-		externAssignParallel<<<1,domainSize,0,s>>>(domain, domainSize, value);
-		ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceVariable::assign");
-		ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceVariable::assign");
-		ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceVariable::assign");
-	} 
+	cudaStream_t s;
+	ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceVariable::assign");
+	externAssignParallel<<<1,domainSize,0,s>>>(domain, domainSize, value);
+	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceVariable::assign");
+	ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceVariable::assign");
+	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceVariable::assign");
 
 	ground = value;
 	return 0;
@@ -198,15 +195,12 @@ __device__ inline int DeviceVariable::undoAssign(int value){
 		return -1;
 	}
 
-	if(!fullParallel)externUndoAssignSequential(domain, domainSize, value);
-	else{
-		cudaStream_t s;
-		ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceVariable::undoAssign");
-		externUndoAssignParallel<<<1,domainSize>>>(domain, domainSize, value);
-		ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceVariable::undoAssign");
-		ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceVariable::undoAssign");
-		ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceVariable::undoAssign");
-	} 
+	cudaStream_t s;
+	ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceVariable::undoAssign");
+	externUndoAssignParallel<<<1,domainSize>>>(domain, domainSize, value);
+	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceVariable::undoAssign");
+	ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceVariable::undoAssign");
+	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceVariable::undoAssign");
 
 	checkGround();
 
