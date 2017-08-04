@@ -171,6 +171,8 @@ __device__ DeviceVariableCollection& DeviceVariableCollection::operator=(const D
 	MemoryManagement<int>::copy(other.lastValues, lastValues, nQueen);
 	MemoryManagement<int>::copy(other.dMem, dMem, nQueen*nQueen);
 
+	deviceQueue.count = other.deviceQueue.count;
+
 	for(int i = 0; i < nQueen; ++i){
 		deviceVariable[i].ground = other.deviceVariable[i].ground;
 		deviceVariable[i].failed = other.deviceVariable[i].failed;

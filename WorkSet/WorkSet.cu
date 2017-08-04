@@ -5,6 +5,7 @@
 #include "../QueenPropagation/QueenPropagation.cu"
 #include "../QueenConstraints/QueenConstraints.cu"
 #include "../ErrorChecking/ErrorChecking.cu"
+#include "../parallelQueue/parallelQueue.cu"
 #include <cstdio>
 
 ///////////////////////////////////////////////////////////////////////
@@ -100,6 +101,10 @@ struct DeviceWorkSet{
 
 	__device__ int solve(int,int); 	//solve csp for all variable over a specific level
 									//and returns the number of solutions.
+
+	__device__ int solveAndAdd(int,int,int,DeviceParallelQueue&);
+									//put in queue everything before level discriminant chosen
+									//then it solve the csp 
 
 	__device__ void print();
 
@@ -391,3 +396,50 @@ __device__ int DeviceWorkSet::solve(int who, int level){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+__device__ int DeviceWorkSet::solveAndAdd(int who ,int level ,int levelDiscriminant, DeviceParallelQueue& deviceParallelQueue){
+
+	int ltemp = level - 1;
+	int levelUp = 1;
+	int val = 0;
+	int nSols = 0;
+	bool done = false;
+
+	do{
+		if(level == nQueen || deviceVariableCollection[who].isGround()){
+			if(deviceQueenConstraints.solution(deviceVariableCollection[who],true)){
+				++nSols;
+			}
+			deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
+			--level;			
+		}else{
+			if(deviceVariableCollection[who].deviceVariable[level].ground < 0){
+				val = deviceQueenPropagation.nextAssign(deviceVariableCollection[who],level);
+				if(val == -1){
+					if(level == 0){
+						done = true;
+					}else{
+						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
+						level -= levelUp;
+						levelUp = 1;
+					}
+				}else{
+					if(deviceQueenPropagation.parallelForwardPropagation(deviceVariableCollection[who],level,val)){
+						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
+
+					}else if(level < levelDiscriminant){
+						deviceParallelQueue.add(deviceVariableCollection[who],level,who);
+						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
+					}else{
+						++level;
+					}
+				}
+			}else{
+				++level;
+				++levelUp;
+			}
+		}
+		if(level == ltemp)done = true;
+	}while(!done);
+	return nSols;
+
+}

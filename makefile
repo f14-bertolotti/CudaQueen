@@ -29,6 +29,10 @@ make8:
 make9:
 	$(NCC) ./CUDAqueen2.cu -o ./bin/RCUDA2 $(NCCFLAGS) $(LIB)
 
+make10:
+	$(NCC) ./test/parallelQueueTest.cu -o ./bin/PQTEST $(NCCFLAGS) $(LIB)
+
+
 
 run2-memcheck:
 	cuda-memcheck ./bin/VTEST
@@ -54,6 +58,8 @@ run8-memcheck:
 run9-memcheck:
 	cuda-memcheck ./bin/RCUDA2
 
+run10-memcheck:
+	cuda-memcheck ./bin/PQTEST
 
 run2:
 	./bin/VTEST
@@ -79,6 +85,8 @@ run8:
 run9: 
 	./bin/RCUDA2
 
+run10:
+	./bin/PQTEST
 
 
 clean2:
@@ -105,4 +113,7 @@ clean8:
 clean9:
 	rm ./bin/RCUDA2
 
-all: make2 make3 make4 make5 make6 make7 make8
+clean10:
+	rm ./bin/PQTEST
+
+all: make2 make3 make4 make5 make6 make7 make8 make9 make10
