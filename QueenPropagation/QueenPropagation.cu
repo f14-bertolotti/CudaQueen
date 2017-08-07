@@ -163,6 +163,8 @@ __device__ int inline DeviceQueenPropagation::forwardPropagation(DeviceVariableC
 
 	vc.deviceQueue.add(var,val,5);
 
+	if (vc.isFailed()) return -1;
+
 	return 0;
 
 }
@@ -216,7 +218,7 @@ __global__ void externParallelPropagation(DeviceVariableCollection& vc, int var,
 
 	if(rowIndex != var && val == columnIndex){
 
-		int old = vc.deviceVariable[rowIndex].domain[columnIndex]--;
+		int old = atomicAdd(&vc.deviceVariable[rowIndex].domain[columnIndex],-1);
 		if(old == 1){
 			vc.deviceVariable[rowIndex].changed = 1;
 		}
@@ -225,7 +227,7 @@ __global__ void externParallelPropagation(DeviceVariableCollection& vc, int var,
 	
 	if(rowIndex != var && columnIndex == rowIndex && columnIndex+val-var < vc.nQueen && columnIndex+val-var >= 0){
 
-		int old = vc.deviceVariable[rowIndex].domain[columnIndex+val-var]--;
+		int old = atomicAdd(&vc.deviceVariable[rowIndex].domain[columnIndex+val-var],-1);
 		if(old == 1){
 			vc.deviceVariable[rowIndex].changed = 1;
 		}
@@ -234,7 +236,7 @@ __global__ void externParallelPropagation(DeviceVariableCollection& vc, int var,
 	
 	if(rowIndex != var && vc.nQueen-columnIndex == rowIndex && columnIndex-(vc.nQueen-val)+var < vc.nQueen && columnIndex-(vc.nQueen-val)+var >= 0){
 
-		int old = vc.deviceVariable[rowIndex].domain[columnIndex-(vc.nQueen-val)+var]--;
+		int old = atomicAdd(&vc.deviceVariable[rowIndex].domain[columnIndex-(vc.nQueen-val)+var],-1);
 		if(old == 1){
 			vc.deviceVariable[rowIndex].changed = 1;
 		}
@@ -290,8 +292,8 @@ __device__ int DeviceQueenPropagation::parallelForwardPropagation(DeviceVariable
 
 	do{
 		ch=false;
-		for(int i = 0; i < vc.nQueen; ++i){
-			if(vc.deviceVariable[i].changed==1){
+		for(int i = var+1; i < vc.nQueen; ++i){
+			if(vc.deviceVariable[i].changed == 1){
 				if(vc.deviceVariable[i].ground>=0){
 
 					cudaStream_t s;
@@ -303,8 +305,8 @@ __device__ int DeviceQueenPropagation::parallelForwardPropagation(DeviceVariable
 					ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceQueenPropagation::parallelForwardPropagation::STREAM DESTRUCTION");
 					ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceQueenPropagation::parallelForwardPropagation::SYNCH");
 
-
 					ch = true;
+
 				}
 				vc.deviceVariable[i].changed=-1;
 			}
@@ -373,6 +375,7 @@ __device__ int inline DeviceQueenPropagation::parallelUndoForwardPropagation(Dev
 		externPropagation2<<<1,vc.nQueen*vc.nQueen,0,s>>>(vc,vc.deviceQueue.front()->var,vc.deviceQueue.front()->val,vc.nQueen,+1);
 		ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceQueenPropagation::parallelUndoForwardPropagation::EXTERN PROPAGATION CALL");
 		ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceQueenPropagation::parallelUndoForwardPropagation::STREAM DESTRUCTION");
+
 		vc.deviceQueue.pop();
 		if(vc.deviceQueue.empty())break;
 	}

@@ -180,8 +180,6 @@ __device__ DeviceVariableCollection& DeviceVariableCollection::operator=(const D
 		deviceVariable[i].domainSize = other.deviceVariable[i].domainSize;		
 	}
 
-	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceVariableCollection::operator=::SYNCH");
-
 	return *this;
 }
 

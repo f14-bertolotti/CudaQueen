@@ -8,13 +8,13 @@ __device__ DeviceVariableCollection deviceVariableCollection;
 __device__ DeviceParallelQueue deviceParallelQueue;
 
 __device__ const int nQueen = 5;
-__device__ const int size = 30;
+__device__ const int size = 1000;
 __device__ int lockPrint = 0;
 
 /////////////////////////////////////////////////////////////////
 
 __global__ void init2(DeviceVariableCollection*,DeviceVariable*,
-					 int*,int*,int*,Triple*,int,int);
+					 int*,int*,int*,int*,Triple*,int,int);
 __global__ void init1(int*,DeviceVariable*,int,int*,Triple*);
 __global__ void test();
 __global__ void testPrint();
@@ -32,17 +32,18 @@ int main(){
 				  hostVariableCollection.dMemlastValues,
 				  hostVariableCollection.hostQueue.dMem);
 	init2<<<1,1>>>(hostParallelQueue.deviceVariableCollection,
-				  hostParallelQueue.deviceVariable,
-				  hostParallelQueue.variablesMem,
-				  hostParallelQueue.lastValuesMem,
-				  hostParallelQueue.lockReading,
-				  hostParallelQueue.tripleQueueMem,
-				  hostParallelQueue.nQueen,
-				  hostParallelQueue.size);
+	  			   hostParallelQueue.deviceVariable,
+	 			   hostParallelQueue.variablesMem,
+	 			   hostParallelQueue.lastValuesMem,
+	 			   hostParallelQueue.lockReading,
+	 			   hostParallelQueue.levelLeaved,
+	 			   hostParallelQueue.tripleQueueMem,
+	  			   hostParallelQueue.nQueen,
+	 			   hostParallelQueue.size);
 
 	cudaDeviceSynchronize();
 
-	test<<<40,1>>>();
+	test<<<500,1>>>();
 
 	testPrint<<<1,1>>>();
 
@@ -60,19 +61,21 @@ __global__ void init1(int* dMem, DeviceVariable* deviceVariable, int nQueen, int
 /////////////////////////////////////////////////////////////////
 
 __global__ void init2(DeviceVariableCollection* deviceVariableCollection, 
-					 DeviceVariable* deviceVariable,
-					 int* variablesMem,
-					 int* lastValuesMem,
-					 int* lockReading,
-					 Triple* tripleQueueMem,
-					 int nQueen, 
-					 int size){
+		 			  DeviceVariable* deviceVariable,
+		 			  int* variablesMem,
+		 			  int* lastValuesMem,
+		 			  int* lockReading,
+		 			  int* levelLeaved,
+		 			  Triple* tripleQueueMem,
+		 			  int nQueen, 
+		 			  int size){
 
 	deviceParallelQueue.init(deviceVariableCollection,
 						     deviceVariable,
 						     variablesMem,
 						     lastValuesMem,
 						     lockReading,
+						     levelLeaved,
 						     tripleQueueMem,
 						     nQueen,
 						     size);
@@ -85,25 +88,12 @@ __global__ void test(){
 
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
 
-	while(atomicCAS(&lockPrint,0,1)==1){}
-		printf("%d adding\n", index);
-	lockPrint = 0;
 
-	if(deviceParallelQueue.add(deviceVariableCollection)==-1){
-		while(atomicCAS(&lockPrint,0,1)==1){}
-			printf("%d cant add\n", index);
-		lockPrint = 0;
-	}
+	deviceParallelQueue.add(deviceVariableCollection,0,index);
+	
 
-	while(atomicCAS(&lockPrint,0,1)==1){}
-		printf("%d reading\n", index);
-	lockPrint = 0;
+	deviceParallelQueue.read(deviceVariableCollection,index);
 
-	if(deviceParallelQueue.read(deviceVariableCollection)==-1){
-		while(atomicCAS(&lockPrint,0,1)==1){}
-			printf("%d cant read\n", index);
-		lockPrint = 0;
-	}
 
 	cudaDeviceSynchronize();
 
@@ -112,7 +102,7 @@ __global__ void test(){
 /////////////////////////////////////////////////////////////////
 
 __global__ void testPrint(){
-	deviceParallelQueue.print();
+	deviceParallelQueue.printLocks();
 }
 
 /////////////////////////////////////////////////////////////////

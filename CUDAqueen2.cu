@@ -10,15 +10,15 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-__managed__ int nQueen = 8;
-__managed__ int maxBlock = 1000;
-__managed__ int levelDiscriminant1 = 4;
-__managed__ int levelDiscriminant2 = 6;
+__managed__ int nQueen = 13;
+__managed__ int maxBlock = 63000;
+__managed__ int levelDiscriminant1 = 6;
+__managed__ int levelDiscriminant2 = 10;
 
-__device__ int blockCount;
-__device__ int nBlockInPhase2;
+__device__ int blockCount = 0;
+__device__ int nBlockInPhase2 = 0;
 __device__ int printLock = 0;
-__device__ int solutions;
+__device__ int solutions = 0;
 
 __device__ DeviceQueenConstraints deviceQueenConstraints;
 __device__ DeviceQueenPropagation deviceQueenPropagation;
@@ -28,36 +28,51 @@ __device__ DeviceParallelQueue deviceParallelQueue;
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 __global__ void test(int level, int workIndex){
-		
-	if(level == nQueen || deviceWorkSet.deviceVariableCollection[workIndex].isGround()){
-		if(deviceQueenConstraints.solution(deviceWorkSet.deviceVariableCollection[workIndex],true)){
-			atomicAdd(&solutions,1);
+
+
+	if(level >= levelDiscriminant1 && !deviceWorkSet.deviceVariableCollection[workIndex].isFailed()){
+		atomicAdd(&solutions, deviceWorkSet.solveAndAdd(workIndex,level,levelDiscriminant2,deviceParallelQueue));
+	}
+
+	while(level < levelDiscriminant1){
+
+		if(deviceWorkSet.deviceVariableCollection[workIndex].isFailed()){
+
+			break;
+
 		}
-	}else if(deviceWorkSet.deviceVariableCollection[workIndex].isFailed()){
-		//do nothing
-	}else{
 
-		if(level < levelDiscriminant1 && blockCount < maxBlock){
+		if(deviceWorkSet.deviceVariableCollection[workIndex].isGround() && 
+			deviceQueenConstraints.solution(deviceWorkSet.deviceVariableCollection[workIndex],true)){
+			
+			atomicAdd(&solutions,1);
+			break;
 
+		}
+
+		if(deviceWorkSet.deviceVariableCollection[workIndex].deviceVariable[level].ground < 0){
 			int oldCount = 0;
-			int nExpansions = deviceWorkSet.expand(workIndex,level,oldCount);
-			if(nExpansions > 0){
-				for(int i = oldCount; i < oldCount+nExpansions; ++i){
-					cudaStream_t s;
-					ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"main");
-					test<<<1,1,0,s>>>(level+1,i);					
-					atomicAdd(&blockCount,nExpansions);
-					ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"main");
-					ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"main");
-				}
+			int nExpansion = deviceWorkSet.expand(workIndex,level,oldCount);
+			if(nExpansion == -1){
+				atomicAdd(&solutions, deviceWorkSet.solveAndAdd(workIndex,level,levelDiscriminant2,deviceParallelQueue));
+				break;
 			}else{
-				atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level));
+				for(int i = oldCount; i < oldCount + nExpansion; ++i){
+					cudaStream_t s;
+					ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"test::STREAM CREATION");
+					test<<<1,1,0,s>>>(level+1,i);					
+					atomicAdd(&blockCount,nExpansion);
+					ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"test::TEST ERROR");
+					ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"test::STREAM DESTRUCTION");
+					
+				}
 			}
+		}
 
-		}else if(level < levelDiscriminant2){
-			atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,level,levelDiscriminant2,deviceParallelQueue));
-		}else{
-			atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level));
+		++level;
+
+		if(level >= levelDiscriminant1 && !deviceWorkSet.deviceVariableCollection[workIndex].isFailed()){
+			atomicAdd(&solutions, deviceWorkSet.solveAndAdd(workIndex,level,levelDiscriminant2,deviceParallelQueue));
 		}
 	}
 
@@ -67,10 +82,13 @@ __global__ void test(int level, int workIndex){
 	do{
 		levelLeaved = deviceParallelQueue.read(deviceWorkSet.deviceVariableCollection[workIndex],workIndex);
 		if(levelLeaved == -1){
+		}else if(levelLeaved < levelDiscriminant2){
+			atomicAdd(&solutions, deviceWorkSet.solveAndAdd(workIndex,levelLeaved,levelDiscriminant2,deviceParallelQueue));
 		}else{
 			atomicAdd(&solutions,deviceWorkSet.solve(workIndex,levelLeaved));
 		}
 	}while(levelLeaved != -1);
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -92,6 +110,7 @@ int main(){
 
     cudaDeviceSetLimit(cudaLimitPrintfFifoSize, sizeof(char)*999999999);
 	cudaDeviceSetLimit(cudaLimitDevRuntimeSyncDepth, 20);
+	cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount,65000);
 
 	HostWorkSet hostWorkSet(nQueen,maxBlock);
 
@@ -118,6 +137,7 @@ int main(){
 
 
 	cudaDeviceSynchronize();
+	printf("start\n");
 
     cudaEvent_t     start, stop;
     cudaEventCreate( &start );
@@ -125,8 +145,12 @@ int main(){
 	float   elapsedTime;
 	cudaEventRecord( start, 0 );
 
-	test<<<1,1>>>(0,0);
-	cudaDeviceSynchronize();
+	cudaStream_t s;
+	ErrorChecking::hostErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"test::STREAM CREATION");
+	test<<<1,1,0,s>>>(0,0);					
+	ErrorChecking::hostErrorCheck(cudaStreamDestroy(s),"test::STREAM DESTRUCTION");
+	ErrorChecking::hostErrorCheck(cudaDeviceSynchronize(),"test::SYNCH");
+	ErrorChecking::hostErrorCheck(cudaPeekAtLastError(),"test::TEST ERROR");
 
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
@@ -143,10 +167,12 @@ int main(){
 
 __global__ void results(){
 
-
 	printf("\033[32msolutions  = %d\033[0m\n",solutions);
+	printf("still in queue = %d\n", deviceParallelQueue.stillInQueue());
+	printf("maxUsed = %d\n", deviceParallelQueue.maxUsed);
 	printf("block used = %d\n", deviceWorkSet.count);
 	printf("block ended = %d\n", nBlockInPhase2);
+	printf("block used real = %d\n", temp);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

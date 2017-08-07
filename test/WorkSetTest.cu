@@ -54,8 +54,9 @@ __global__ void init(DeviceVariableCollection* deviceVariableCollection,
 
 __global__ void test(){
 
-    deviceWorkSet.expand(0,0);
-    deviceWorkSet.expand(1,1);
+	int oldCount;
+    deviceWorkSet.expand(0,0,oldCount);
+    deviceWorkSet.expand(1,1,oldCount);
 	deviceWorkSet.print();
 
 }

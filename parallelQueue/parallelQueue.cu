@@ -65,6 +65,8 @@ __host__ HostParallelQueue::~HostParallelQueue(){
 struct DeviceParallelQueue{
 	int size;									//max number of element(fixed)
 	int nQueen;									//size of csp
+	int maxUsed;
+	int lockMaxUsed;
 
 	DeviceVariableCollection* deviceVariableCollection;
 	DeviceVariable* deviceVariable;
@@ -83,6 +85,7 @@ struct DeviceParallelQueue{
 
 	__device__ void print();					//print
 	__device__ void printLocks();
+	__device__ int stillInQueue();
 
 	__device__ ~DeviceParallelQueue();				//do nothing
 };
@@ -125,7 +128,7 @@ __device__ DeviceParallelQueue::DeviceParallelQueue(DeviceVariableCollection* dv
 													int nq, int sz):
 													deviceVariableCollection(dvc),deviceVariable(dv),
 													variablesMem(vm),levelLeaved(ll),lastValuesMem(lvm),tripleQueueMem(tqm),
-													lockReading(lr),nQueen(nq),size(sz){
+													lockReading(lr),nQueen(nq),size(sz),maxUsed(0),lockMaxUsed(0){
 
 	ParallelQueueExternInit<<<int(size*nQueen)/1000+1,1000>>>(deviceVariableCollection,
 															  deviceVariable,
@@ -156,6 +159,8 @@ __device__ void DeviceParallelQueue::init(DeviceVariableCollection* dvc, DeviceV
 
 	nQueen = nq;
 	size = sz;
+	maxUsed = 0;
+	lockMaxUsed = 0;
 
 	ParallelQueueExternInit<<<int(size*nQueen)/1000+1,1000>>>(deviceVariableCollection,
 											 				  deviceVariable,
@@ -178,10 +183,17 @@ __device__ int DeviceParallelQueue::add(DeviceVariableCollection& element, int l
 			break;
 		}
 	}
+
 	if(pos == -1)return -1;
+
+	while(atomicCAS(&lockMaxUsed,0,1)==1){}
+	if(pos >= maxUsed)maxUsed = pos+1;
+	lockMaxUsed = 0;
 
 	levelLeaved[pos] = level;
 	deviceVariableCollection[pos] = element;
+
+	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"SYNCH");
 
 	lockReading[pos] = 2;
 
@@ -193,7 +205,7 @@ __device__ int DeviceParallelQueue::add(DeviceVariableCollection& element, int l
 __device__ int DeviceParallelQueue::read(DeviceVariableCollection& element, int index){
 
 	int pos = -1;
-	for (int i = 0; i < size; ++i){
+	for (int i = 0; i < maxUsed && i < size; ++i){
 		if(atomicCAS(&lockReading[i],2,3)==2){
 			pos = i;
 			break;
@@ -202,6 +214,8 @@ __device__ int DeviceParallelQueue::read(DeviceVariableCollection& element, int 
 
 	if(pos == -1)return -1;
 	element = deviceVariableCollection[pos];
+
+	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"SYNCH");
 
 	lockReading[pos] = 0;
 
@@ -227,6 +241,16 @@ __device__ void DeviceParallelQueue::printLocks(){
 		if(i % 100 == 0)printf("\n");
 		printf("%d", lockReading[i]);
 	}printf("\n");
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+__device__ int DeviceParallelQueue::stillInQueue(){
+	int sum = 0;
+	for(int i = 0; i < size; ++i){
+		if(lockReading[i] > 0)++sum;
+	}
+	return sum;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////
