@@ -236,7 +236,7 @@ __global__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, i
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
 
 	DeviceQueenPropagation deviceQueenPropagation;
-
+/*
 	if(index < nQueen*nQueen*3*(nValues-1)){
 		deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*count+index].var = 
 			deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*who+(index%(nQueen*nQueen*3))].var;
@@ -259,6 +259,11 @@ __global__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, i
 	if(index < (nValues-1)){
 		deviceWorkSet.deviceVariableCollection[index+count].deviceQueue.count =
 			deviceWorkSet.deviceVariableCollection[who].deviceQueue.count;
+	}*/
+
+	if(index < nValues-1){
+		deviceWorkSet.deviceVariableCollection[index+count] = 
+				deviceWorkSet.deviceVariableCollection[who];
 	}
 
 	__syncthreads();
@@ -380,6 +385,7 @@ __device__ int DeviceWorkSet::solve(int who, int level){
 	bool done = false;
 
 	do{
+
 		if(level == nQueen || deviceVariableCollection[who].isGround()){
 			if(deviceQueenConstraints.solution(deviceVariableCollection[who],true)){
 				++nSols;
@@ -390,7 +396,7 @@ __device__ int DeviceWorkSet::solve(int who, int level){
 			if(deviceVariableCollection[who].deviceVariable[level].ground < 0){
 				val = deviceQueenPropagation.nextAssign(deviceVariableCollection[who],level);
 				if(val == -1){
-					if(level == 0){
+					if(level == 0 || level == ltemp+1){
 						done = true;
 					}else{
 						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
@@ -416,11 +422,14 @@ __device__ int DeviceWorkSet::solve(int who, int level){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
 __device__ int DeviceWorkSet::solveAndAdd(int who ,int level ,int levelDiscriminant, DeviceParallelQueue& deviceParallelQueue){
 
-	int nSols = 0;
 
-	return solve(who,level);
+	int nSols = solve(who,level);
+
+
+	return nSols;
 
 	int first = -1;
 
