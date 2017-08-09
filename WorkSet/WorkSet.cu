@@ -378,6 +378,7 @@ __device__ void DeviceWorkSet::print(){
 
 __device__ int DeviceWorkSet::solve(int who, int level){
 
+
 	int ltemp = level - 1;
 	int levelUp = 1;
 	int val = 0;
@@ -396,7 +397,7 @@ __device__ int DeviceWorkSet::solve(int who, int level){
 			if(deviceVariableCollection[who].deviceVariable[level].ground < 0){
 				val = deviceQueenPropagation.nextAssign(deviceVariableCollection[who],level);
 				if(val == -1){
-					if(level == 0 || level == ltemp+1){
+					if(level <= ltemp+1){
 						done = true;
 					}else{
 						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
@@ -417,6 +418,7 @@ __device__ int DeviceWorkSet::solve(int who, int level){
 		}
 		if(level == ltemp)done = true;
 	}while(!done);
+
 	return nSols;
 }
 
