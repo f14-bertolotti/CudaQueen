@@ -236,30 +236,6 @@ __global__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, i
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
 
 	DeviceQueenPropagation deviceQueenPropagation;
-/*
-	if(index < nQueen*nQueen*3*(nValues-1)){
-		deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*count+index].var = 
-			deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*who+(index%(nQueen*nQueen*3))].var;
-		deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*count+index].val = 
-			deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*who+(index%(nQueen*nQueen*3))].val;
-		deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*count+index].cs = 
-			deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*who+(index%(nQueen*nQueen*3))].cs;
-	}
-
-	if(index < nQueen*nQueen*(nValues-1)){
-		deviceWorkSet.variablesMem[nQueen*nQueen*count+index] = 
-			deviceWorkSet.variablesMem[nQueen*nQueen*who+(index%(nQueen*nQueen))];
-	}
-
-	if(index < nQueen * (nValues-1)){
-		deviceWorkSet.lastValuesMem[nQueen*count+index] = 
-			deviceWorkSet.lastValuesMem[nQueen*who+(index%nQueen)];
-	}
-
-	if(index < (nValues-1)){
-		deviceWorkSet.deviceVariableCollection[index+count].deviceQueue.count =
-			deviceWorkSet.deviceVariableCollection[who].deviceQueue.count;
-	}*/
 
 	if(index < nValues-1){
 		deviceWorkSet.deviceVariableCollection[index+count] = 
@@ -385,8 +361,16 @@ __device__ int DeviceWorkSet::solve(int who, int level){
 	int nSols = 0;
 	bool done = false;
 
-	do{
+	if(deviceVariableCollection[who].isFailed()){
+		return 0;
+	}else if(deviceVariableCollection[who].isGround()){
+		if(deviceQueenConstraints.solution(deviceVariableCollection[who],true)){
+			return 1;
+		}
+		return 0;
+	}
 
+	do{
 		if(level == nQueen || deviceVariableCollection[who].isGround()){
 			if(deviceQueenConstraints.solution(deviceVariableCollection[who],true)){
 				++nSols;
@@ -427,36 +411,46 @@ __device__ int DeviceWorkSet::solve(int who, int level){
 
 __device__ int DeviceWorkSet::solveAndAdd(int who ,int level ,int levelDiscriminant, DeviceParallelQueue& deviceParallelQueue){
 
-
-	int nSols = solve(who,level);
-
-
-	return nSols;
-
+	int nSols = 0;
 	int first = -1;
 
-	while(level < levelDiscriminant){
 
+	if(deviceVariableCollection[who].isFailed()){
+		return 0;
+	}else if(deviceVariableCollection[who].isGround()){
+		if(deviceQueenConstraints.solution(deviceVariableCollection[who],true)){
+			return 1;
+		}
+		return 0;
+	}
+
+	while(level < levelDiscriminant){
+		//fino a che il livello è minore del secondo dicriminante
 		first = -1;
 
 		for(int i = 0; i < nQueen; ++i){
-
+			//mando in coda tutti tranne il primo
 			if(deviceVariableCollection[who].deviceVariable[level].domain[i] == 1){
+				//se il valore nel dominio è valido
 				if(first == -1){
+					//se sono il primo
 					first = i;
 				}else{
-
+					//se non sono il primo assegno e propago
 					deviceVariableCollection[who].deviceVariable[level].assign(i);
-					deviceVariableCollection[who].lastValues[level]=i+1;
+					deviceVariableCollection[who].lastValues[level]=nQueen;
 					if(deviceQueenPropagation.parallelForwardPropagation(deviceVariableCollection[who],level,i)){
-
+						//se sono failed
 					}else if(deviceVariableCollection[who].isGround()){
+						//se non sono failed ma sono ground
 						if(deviceQueenConstraints.solution(deviceVariableCollection[who],true)){
+							//se sono soluzione
 							++nSols;
 						}
 					}else{
-
+						//se non sono ne failed ne ground provo ad aggiungere in coda
 						if(deviceParallelQueue.add(deviceVariableCollection[who],level+1,who)==-1){
+							//se non riesco ad aggiungere
 							nSols += solve(who,level);
 							deviceVariableCollection[who].deviceVariable[level].assign(i);
 							deviceQueenPropagation.parallelForwardPropagation(deviceVariableCollection[who],level,i);
@@ -464,20 +458,28 @@ __device__ int DeviceWorkSet::solveAndAdd(int who ,int level ,int levelDiscrimin
 						}
 
 					}
+					//torno indietro per rimanere sullo stesso livello
 					deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
 				}
+
 			}
+
 		}
+		//assegno al primo e propago
 		deviceVariableCollection[who].deviceVariable[level].assign(first);
-		deviceVariableCollection[who].lastValues[level]=first+1;
+		deviceVariableCollection[who].lastValues[level]=nQueen;
 		if(deviceQueenPropagation.parallelForwardPropagation(deviceVariableCollection[who],level,first)){
+			//se sono failed ho finito
 			break;
 		}else if(deviceVariableCollection[who].isGround()){
+			//se sono ground ho finito
 			if(deviceQueenConstraints.solution(deviceVariableCollection[who],true)){
+				//se sono soluzione incremento il numero delle soluzioni
 				++nSols;
-				break;
 			}
+			break;
 		}else if(level + 1 >= levelDiscriminant){
+			//se il prossimo livello è oltre il secondo discriminante risolvo e ho finito
 			nSols += solve(who,level+1);
 			break;
 		}

@@ -217,9 +217,11 @@ __device__ int DeviceParallelQueue::read(DeviceVariableCollection& element, int 
 
 	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"SYNCH");
 
+	int ltemp = levelLeaved[pos];
+
 	lockReading[pos] = 0;
 
-	return levelLeaved[pos];
+	return ltemp;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////

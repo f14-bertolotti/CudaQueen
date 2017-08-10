@@ -13,12 +13,14 @@
 
 __device__ int nQueen = 8;
 __device__ int maxBlock = 10000;
+__device__ int maxQueue = 10000;
 __device__ int levelDiscriminant1 = 4;
 __device__ int levelDiscriminant2 = 10;
 __device__ bool fileprint = false;
 
 int host_nQueen = 8;
 int host_maxBlock = 10000;
+int host_maxQueue = 10000;
 int host_levelDiscriminant1 = 4;
 int host_levelDiscriminant2 = 10;
 bool host_fileprint = false;
@@ -45,15 +47,15 @@ __global__ void test(int level, int workIndex){
 	bool done = false;
 
 	if(deviceWorkSet.deviceVariableCollection[workIndex].isFailed()){
-		return;
+		done = true;
 	}else if(deviceWorkSet.deviceVariableCollection[workIndex].isGround()){
 		if(deviceQueenConstraints.solution(deviceWorkSet.deviceVariableCollection[workIndex],true)){
 			atomicAdd(&solutions,1);
-			return;
+			done = true;
 		}
 	}
 
-	do{
+	while(!done){
 
 		if(level < levelDiscriminant1){
 
@@ -70,7 +72,7 @@ __global__ void test(int level, int workIndex){
 
 				  	cudaStream_t s;
 				 	cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
-				 	deviceWorkSet.deviceVariableCollection[i].lastValues[level] = nQueen;
+				 	deviceWorkSet.deviceVariableCollection[i].lastValues[level] = nQueen+1;
 				 	//deviceWorkSet.deviceVariableCollection[i].deviceQueue.count = 0;
 					test<<<1,1,0,s>>>(level+1,i);
 					cudaStreamDestroy(s);
@@ -89,20 +91,35 @@ __global__ void test(int level, int workIndex){
 				++level;
 			}else{
 				//non sono riuscito ad espandere risolvo normalmente
-				atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level));
+				atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,level,levelDiscriminant2,deviceParallelQueue));
 				done = true;
 			}
 
+		}else if(level >= levelDiscriminant1 && level < levelDiscriminant2){
+
+			atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,level,levelDiscriminant2,deviceParallelQueue));
+			done = true;
+
 		}else{
 
-				atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level));
-				done = true;
+			atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level));
+			done = true;
 
 		}
 
-	}while(!done);
+	}
 
-	cudaDeviceSynchronize();
+
+	int levelLeaved = 0;
+	do{
+		levelLeaved = deviceParallelQueue.read(deviceWorkSet.deviceVariableCollection[workIndex],workIndex);
+		if(levelLeaved == -1){
+		}else if(levelLeaved < levelDiscriminant2){
+			atomicAdd(&solutions, deviceWorkSet.solveAndAdd(workIndex,levelLeaved,levelDiscriminant2,deviceParallelQueue));
+		}else{
+			atomicAdd(&solutions,deviceWorkSet.solve(workIndex,levelLeaved));
+		}
+	}while(levelLeaved != -1);
 
 
 }
@@ -119,7 +136,7 @@ __global__ void initParallelQueue(DeviceVariableCollection*,
 
 __global__ void results();
 
-__global__ void init(int,int,int,bool);
+__global__ void init(int,int,int,int,int,bool);
 
 void init(int argc, char **argv);
 
@@ -199,7 +216,14 @@ __global__ void results(){
 		printf("maxUsed = %d\n", deviceParallelQueue.maxUsed);
 		printf("block used = %d\n", deviceWorkSet.count);
 	}else{
-		printf("%d 		%d 		%d 		%d 		",nQueen,solutions, deviceWorkSet.count,maxBlock);
+		printf("%d 		",nQueen);
+		printf("%d 		",solutions);
+		printf("%d 		",deviceWorkSet.count);
+		printf("%d 		",deviceParallelQueue.maxUsed);
+		printf("%d 		",maxBlock);
+		printf("%d 		",maxQueue);
+		printf("%d 	",levelDiscriminant1);
+		printf("%d 	",levelDiscriminant2);
 	}
 }
 
@@ -249,7 +273,7 @@ __global__ void initParallelQueue(DeviceVariableCollection* deviceVariableCollec
 
 void init(int argc, char **argv){
 	char c;
-	while ((c = getopt (argc, argv, "fl:b:n:")) != -1){
+	while ((c = getopt (argc, argv, "fq:k:l:b:n:")) != -1){
 		switch (c){
 			case 'n':
 				host_nQueen = atoi(optarg);
@@ -259,6 +283,12 @@ void init(int argc, char **argv){
 				break;
 			case 'l':
 				host_levelDiscriminant1 = atoi(optarg);
+				break;
+			case 'k':
+				host_levelDiscriminant2 = atoi(optarg);
+				break;
+			case 'q':
+				host_maxQueue = atoi(optarg);
 				break;
 			case 'f':
 				host_fileprint = true;
@@ -273,20 +303,23 @@ void init(int argc, char **argv){
 		printf("number of queen      = %d\n", host_nQueen);
 		printf("max number of block  = %d\n", host_maxBlock);
 		printf("level discriminant 1 = %d\n", host_levelDiscriminant1);
+		printf("level discriminant 2 = %d\n", host_levelDiscriminant2);
 		printf("file print           = %s\n", host_fileprint ? "true" : "false");
 		printf("-------------------------\n");
 	}else
 
-	init<<<1,1>>>(host_nQueen,host_maxBlock,host_levelDiscriminant1,host_fileprint);
+	init<<<1,1>>>(host_nQueen,host_maxBlock,host_maxQueue,host_levelDiscriminant1,host_levelDiscriminant2,host_fileprint);
 	cudaDeviceSynchronize();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-__global__ void init(int n,int b,int l,bool f){
+__global__ void init(int n,int b,int q,int l,int k,bool f){
 	nQueen = n;
 	maxBlock = b;
+	maxQueue = q;
 	levelDiscriminant1 = l;
+	levelDiscriminant2 = k;
 	fileprint = f;
 }
 
