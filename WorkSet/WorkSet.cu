@@ -99,10 +99,10 @@ struct DeviceWorkSet{
 											//for a chosen variable collection, return number of expansions
 											//-1 otherwise
 
-	__device__ int solve(int,int); 	//solve csp for all variable over a specific level
+	__device__ int solve(int,int,int&); 	//solve csp for all variable over a specific level
 									//and returns the number of solutions.
 
-	__device__ int solveAndAdd(int,int,int,DeviceParallelQueue&);
+	__device__ int solveAndAdd(int,int,int&,int,DeviceParallelQueue&);
 									//put in queue everything before level discriminant chosen
 									//then it solve the csp 
 
@@ -237,11 +237,26 @@ __global__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, i
 
 	DeviceQueenPropagation deviceQueenPropagation;
 
-	if(index < nValues-1){
-		deviceWorkSet.deviceVariableCollection[index+count] = 
-				deviceWorkSet.deviceVariableCollection[who];
+	if(index < nQueen*nQueen*3*(nValues-1)){
+		deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*count+index].var = 
+			deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*who+(index%(nQueen*nQueen*3))].var;
+		deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*count+index].val = 
+			deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*who+(index%(nQueen*nQueen*3))].val;
+		deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*count+index].cs = 
+			deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*who+(index%(nQueen*nQueen*3))].cs;
 	}
-
+	if(index < nQueen*nQueen*(nValues-1)){
+		deviceWorkSet.variablesMem[nQueen*nQueen*count+index] = 
+			deviceWorkSet.variablesMem[nQueen*nQueen*who+(index%(nQueen*nQueen))];
+	}
+	if(index < nQueen * (nValues-1)){
+		deviceWorkSet.lastValuesMem[nQueen*count+index] = 
+			deviceWorkSet.lastValuesMem[nQueen*who+(index%nQueen)];
+	}
+	if(index < (nValues-1)){
+		deviceWorkSet.deviceVariableCollection[index+count].deviceQueue.count =
+			deviceWorkSet.deviceVariableCollection[who].deviceQueue.count;
+	}
 	__syncthreads();
 
 	int j = 0;
@@ -352,7 +367,7 @@ __device__ void DeviceWorkSet::print(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceWorkSet::solve(int who, int level){
+__device__ int DeviceWorkSet::solve(int who, int level, int& nodes){
 
 
 	int ltemp = level - 1;
@@ -389,6 +404,7 @@ __device__ int DeviceWorkSet::solve(int who, int level){
 						levelUp = 1;
 					}
 				}else{
+					atomicAdd(&nodes,1);
 					if(deviceQueenPropagation.parallelForwardPropagation(deviceVariableCollection[who],level,val)){
 						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
 						--level;
@@ -409,7 +425,7 @@ __device__ int DeviceWorkSet::solve(int who, int level){
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-__device__ int DeviceWorkSet::solveAndAdd(int who ,int level ,int levelDiscriminant, DeviceParallelQueue& deviceParallelQueue){
+__device__ int DeviceWorkSet::solveAndAdd(int who ,int level , int& nodes,int levelDiscriminant, DeviceParallelQueue& deviceParallelQueue){
 
 	int nSols = 0;
 	int first = -1;
@@ -428,9 +444,17 @@ __device__ int DeviceWorkSet::solveAndAdd(int who ,int level ,int levelDiscrimin
 		//fino a che il livello è minore del secondo dicriminante
 		first = -1;
 
+		while(deviceVariableCollection[who].deviceVariable[level].ground >= 0){
+			++level;
+			if(level >= levelDiscriminant){
+				return nSols + solve(who,level,nodes);
+			}
+		}
+
 		for(int i = 0; i < nQueen; ++i){
 			//mando in coda tutti tranne il primo
 			if(deviceVariableCollection[who].deviceVariable[level].domain[i] == 1){
+				atomicAdd(&nodes,1);
 				//se il valore nel dominio è valido
 				if(first == -1){
 					//se sono il primo
@@ -451,7 +475,7 @@ __device__ int DeviceWorkSet::solveAndAdd(int who ,int level ,int levelDiscrimin
 						//se non sono ne failed ne ground provo ad aggiungere in coda
 						if(deviceParallelQueue.add(deviceVariableCollection[who],level+1,who)==-1){
 							//se non riesco ad aggiungere
-							nSols += solve(who,level);
+							nSols += solve(who,level,nodes);
 							deviceVariableCollection[who].deviceVariable[level].assign(i);
 							deviceQueenPropagation.parallelForwardPropagation(deviceVariableCollection[who],level,i);
 
@@ -480,7 +504,7 @@ __device__ int DeviceWorkSet::solveAndAdd(int who ,int level ,int levelDiscrimin
 			break;
 		}else if(level + 1 >= levelDiscriminant){
 			//se il prossimo livello è oltre il secondo discriminante risolvo e ho finito
-			nSols += solve(who,level+1);
+			nSols += solve(who,level+1,nodes);
 			break;
 		}
 		++level;

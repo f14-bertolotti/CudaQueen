@@ -14,6 +14,7 @@
 __device__ int nQueen = 8;
 __device__ int maxBlock = 10000;
 __device__ int maxQueue = 10000;
+__device__ int nodes = 1;
 __device__ int levelDiscriminant1 = 4;
 __device__ int levelDiscriminant2 = 10;
 __device__ bool fileprint = false;
@@ -64,6 +65,7 @@ __global__ void test(int level, int workIndex){
 			int oldCount = 0;
 			nExpansion = deviceWorkSet.expand(workIndex,level,oldCount);
 
+			atomicAdd(&nodes,nExpansion+1);
 			if(nExpansion >= 0){
 				//sono riuscito ad espandere
 				//deviceWorkSet.deviceVariableCollection[workIndex].deviceQueue.count = 0;
@@ -91,18 +93,26 @@ __global__ void test(int level, int workIndex){
 				++level;
 			}else{
 				//non sono riuscito ad espandere risolvo normalmente
-				atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,level,levelDiscriminant2,deviceParallelQueue));
+				if(maxQueue > 0){
+					atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,level,nodes,levelDiscriminant2,deviceParallelQueue));
+				}else{
+					atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level,nodes));
+				}
 				done = true;
 			}
 
 		}else if(level >= levelDiscriminant1 && level < levelDiscriminant2){
 
-			atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,level,levelDiscriminant2,deviceParallelQueue));
+			if(maxQueue > 0){
+				atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,level,nodes,levelDiscriminant2,deviceParallelQueue));
+			}else{
+				atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level,nodes));
+			}
 			done = true;
 
 		}else{
 
-			atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level));
+			atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level,nodes));
 			done = true;
 
 		}
@@ -115,9 +125,13 @@ __global__ void test(int level, int workIndex){
 		levelLeaved = deviceParallelQueue.read(deviceWorkSet.deviceVariableCollection[workIndex],workIndex);
 		if(levelLeaved == -1){
 		}else if(levelLeaved < levelDiscriminant2){
-			atomicAdd(&solutions, deviceWorkSet.solveAndAdd(workIndex,levelLeaved,levelDiscriminant2,deviceParallelQueue));
+			if(maxQueue > 0){
+				atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,levelLeaved,nodes,levelDiscriminant2,deviceParallelQueue));
+			}else{
+				atomicAdd(&solutions,deviceWorkSet.solve(workIndex,levelLeaved,nodes));
+			}
 		}else{
-			atomicAdd(&solutions,deviceWorkSet.solve(workIndex,levelLeaved));
+			atomicAdd(&solutions,deviceWorkSet.solve(workIndex,levelLeaved,nodes));
 		}
 	}while(levelLeaved != -1);
 
