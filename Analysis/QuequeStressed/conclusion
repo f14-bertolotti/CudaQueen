@@ -1,0 +1,7 @@
+i due grafici mostrano la differenza tra un coda molto grande e una molto più piccola rispetto al carico di lavoro complessivo.
+Come si può notare nonstante la coda si piccola e quindi trovare posti a disposizione in cui inserire i csp sia sostanzialemente difficile
+non c'è una differenza computazionale accentuata, anzi nei casi iniziali si può notare addiritura un miglioramento delle prestazioni.
+Come abbiamo visto la differenza di tempi tra l'algoritmo che usa la coda e quello che non la usa (almeno nel caso delle regine) è molto bassa
+quindi è naturale che anche in questo caso la differenza sia molto bassa, se da una parte perdiamo tempo a cercare posizioni libere che non troveremo
+dall'altra perdiamo tempo nel fare copie, tendezialemente una coda stressata si comporta in modo molto simile all'assenza della coda e questo spiega
+anche il perchè inizialmente la coda stressata sembra avere delle prestazioni migliori.

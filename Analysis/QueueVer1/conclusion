@@ -1,0 +1,9 @@
+l'utilizzo di questa nuova versione dell'espansione in coda a tendezialemente ridotto il divario di tempo dipendendente
+dall'utilizzo della coda, nonostante tutto nei casi in cui l'utilizzo della coda è più frequente si ha comunque una differenza 
+importante, la ragione di questo è da ricercarsi nel costo temporale delle coppie che è necessario fare sia per l'espansione, quindi quando
+si va ad aggiungere in coda, sia in lettura.
+La coda è un strumento importante che può essere utile per bilanciare il carico di lavoro tra le varie unità computazionali,
+tuttavia un uso eccessivo di questa causa un overhead rilevante che limita le prestazioni complessive.
+Da notarsi anche in generale l'utilizzo della coda provaca un leggero miglioramento delle prestazioni, senza ottenere in generale uno
+speedup significativo, tuttavia in contensti differenti potrebbe dare risultati ancora migliori.
+ 

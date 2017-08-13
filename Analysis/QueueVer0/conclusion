@@ -1,0 +1,12 @@
+si può notare che utilizzando livelli bassi del primo discriminante la coda introduce un overhead sostanziale,
+mentre per discriminanti minori la differenza in termini di tempi calcolata su una media di 5 prove si riduce
+e diventa pressochè nulla, questo fatto è dovuto al semplice motivo che per livelli bassi devono essere inseriti in coda 
+contemporaneamente multipli csp, l'algoritmo originale prevede di: propagare in avanti, inserire in coda (copia), propagare all'indietro.
+Quindi maggiore è il numero di csp su un livello maggiore è il numero di propagazioni all'indietro che bisogna fare, questo
+causa appunto l'introduzione di un overhead.
+Un possibile miglioramento sta nell'introdurre una funzione espansione nello stile di WorkSet, nel senso, vengono copiati in coda direttamente
+i csp che è nessario salvare, a questo punto la propagazione pùò avvenire direttamente in place nella coda senza bisogno di effetuare 
+propaazioni all'indietro.
+Inoltre l'introduzione di questa funzionalità permentte anche di sfruttare meglio il parallelismo dinamico, in quanto le propagazioni in
+place possono avvenire contemporaneamente come anche le copie, su uno stesso stream abbiamo quindi copia e propagazione.
+
