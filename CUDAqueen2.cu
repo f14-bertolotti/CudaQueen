@@ -168,7 +168,7 @@ int main(int argc, char **argv){
 
 	HostWorkSet hostWorkSet(host_nQueen,host_maxBlock);
 
-	HostParallelQueue hostParallelQueue(host_nQueen,host_maxBlock);
+	HostParallelQueue hostParallelQueue(host_nQueen,host_maxQueue);
 
 	initWorkSet<<<1,1>>>( hostWorkSet.deviceVariableCollection,
 						  hostWorkSet.deviceVariable,
@@ -230,14 +230,15 @@ __global__ void results(){
 		printf("maxUsed = %d\n", deviceParallelQueue.maxUsed);
 		printf("block used = %d\n", deviceWorkSet.count);
 	}else{
-		printf("%d 		",nQueen);
-		printf("%d 		",solutions);
-		printf("%d 		",deviceWorkSet.count);
-		printf("%d 		",deviceParallelQueue.maxUsed);
-		printf("%d 		",maxBlock);
-		printf("%d 		",maxQueue);
-		printf("%d 	",levelDiscriminant1);
-		printf("%d 	",levelDiscriminant2);
+		printf("%d ",nQueen);
+		printf("%d ",solutions);
+		printf("%d ",nodes);
+		printf("%d ",deviceWorkSet.count);
+		printf("%d ",deviceParallelQueue.maxUsed);
+		printf("%d ",maxBlock);
+		printf("%d ",maxQueue);
+		printf("%d ",levelDiscriminant1);
+		printf("%d ",levelDiscriminant2);
 	}
 }
 

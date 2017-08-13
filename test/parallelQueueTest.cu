@@ -7,7 +7,7 @@
 __device__ DeviceVariableCollection deviceVariableCollection;
 __device__ DeviceParallelQueue deviceParallelQueue;
 
-__device__ const int nQueen = 5;
+__device__ const int nQueen = 8;
 __device__ const int size = 1000;
 __device__ int lockPrint = 0;
 
@@ -22,6 +22,9 @@ __global__ void testPrint();
 /////////////////////////////////////////////////////////////////
 
 int main(){
+
+    cudaDeviceSetLimit(cudaLimitPrintfFifoSize, sizeof(char)*999999999);
+
 
 	HostParallelQueue hostParallelQueue(nQueen,size);
 	HostVariableCollection hostVariableCollection(nQueen);
@@ -43,7 +46,10 @@ int main(){
 
 	cudaDeviceSynchronize();
 
-	test<<<500,1>>>();
+	test<<<1,1>>>();
+
+	cudaDeviceSynchronize();
+
 
 	testPrint<<<1,1>>>();
 
@@ -84,17 +90,35 @@ __global__ void init2(DeviceVariableCollection* deviceVariableCollection,
 
 /////////////////////////////////////////////////////////////////
 
+__global__ void test2(){
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	int levelLeaved = deviceParallelQueue.read(deviceVariableCollection,index);
+	deviceParallelQueue.expansion(deviceVariableCollection,levelLeaved);
+
+}
+
 __global__ void test(){
 
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
 
 
-	deviceParallelQueue.add(deviceVariableCollection,0,index);
-	
+	//deviceParallelQueue.add(deviceVariableCollection,0,index);
 
-	deviceParallelQueue.read(deviceVariableCollection,index);
+	//deviceParallelQueue.read(deviceVariableCollection,index);
 
+	if(index == 0){
+		deviceParallelQueue.expansion(deviceVariableCollection,0);
+	}
 
+	if(index == 0){
+		deviceParallelQueue.expansion(deviceVariableCollection,1);
+	}
+
+	test2<<<1,1>>>();
+	cudaDeviceSynchronize();
+	test2<<<1,1>>>();
+	cudaDeviceSynchronize();
+	test2<<<1,1>>>();
 	cudaDeviceSynchronize();
 
 }
@@ -102,7 +126,10 @@ __global__ void test(){
 /////////////////////////////////////////////////////////////////
 
 __global__ void testPrint(){
+	deviceVariableCollection.print();
 	deviceParallelQueue.printLocks();
+	deviceParallelQueue.print();
+
 }
 
 /////////////////////////////////////////////////////////////////

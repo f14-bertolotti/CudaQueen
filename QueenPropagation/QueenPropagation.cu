@@ -17,6 +17,7 @@ struct DeviceQueenPropagation{
 
 	//////////////////////////////////////MULTI THREAD//////////////////////////////////////
 
+	__device__ int static inline parallelForwardPropagation(DeviceVariableCollection&,int,int,cudaStream_t&);	//forward, uses parallelPropagation code 5
 	__device__ int static inline parallelForwardPropagation(DeviceVariableCollection&,int,int);	//forward, uses parallelPropagation code 5
 	__device__ int static inline parallelUndoForwardPropagation(DeviceVariableCollection&);		//csp undo forward propagation
 
@@ -314,6 +315,10 @@ __device__ int DeviceQueenPropagation::parallelForwardPropagation(DeviceVariable
 
 		if(vc.isFailed()){
 			vc.deviceQueue.add(var,val,5);
+
+			for(int i = 0; i < vc.nQueen; ++i)
+				vc.deviceVariable[i].changed=-1;
+
 			return 1;
 		}
 
@@ -396,3 +401,66 @@ __device__ int inline DeviceQueenPropagation::parallelUndoForwardPropagation(Dev
 
 ////////////////////////////////////////////////////////////////////////////
 
+__device__ int DeviceQueenPropagation::parallelForwardPropagation(DeviceVariableCollection& vc, int var, int val, cudaStream_t& s){
+
+
+
+	if(var < 0 || var > vc.nQueen){
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation2::VAR OUT OF BOUND");
+		return -1;
+	}
+
+	if(val < 0 || val > vc.nQueen){
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation2::VAL OUT OF BOUND");
+		return -1;
+	}
+
+	if(vc.deviceVariable[var].ground != val){
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation2::VARIABLE NOT GROUND");
+		return -1;
+	}
+
+
+	externParallelPropagation<<<1,vc.nQueen*vc.nQueen,0,s>>>(vc,var,val);
+
+	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceQueenPropagation::parallelForwardPropagation2::SYNCH");
+
+	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceQueenPropagation::parallelForwardPropagation2::EXTERN FORWARD PROPAGATION CALL");
+
+	bool ch = false;
+
+	do{
+		ch=false;
+		for(int i = var+1; i < vc.nQueen; ++i){
+			if(vc.deviceVariable[i].changed == 1){
+				if(vc.deviceVariable[i].ground>=0){
+
+					externParallelPropagation<<<1,vc.nQueen*vc.nQueen,0,s>>>(vc,i,vc.deviceVariable[i].ground);
+					ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceQueenPropagation::parallelForwardPropagation2::EXTERN FORWARD PROPAGATION CALL");
+
+					ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceQueenPropagation::parallelForwardPropagation2::SYNCH");
+
+					ch = true;
+
+				}
+				vc.deviceVariable[i].changed=-1;
+			}
+		}
+
+		if(vc.isFailed()){
+			vc.deviceQueue.add(var,val,5);
+
+			for(int i = 0; i < vc.nQueen; ++i)
+				vc.deviceVariable[i].changed=-1;
+
+			return 1;
+		}
+
+	}while(ch);
+
+	vc.deviceQueue.add(var,val,5);
+
+	return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////
