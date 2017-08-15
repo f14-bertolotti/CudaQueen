@@ -1,41 +1,25 @@
 #!/bin/bash
 
-rm out;
-echo "NQUEEN SOLUTIONS NODES BLOCKUSED QUEUEUSED MAXBLOCK MAXQUEUE L1 L2 TIME" > stressedQ8;
-echo "NQUEEN SOLUTIONS NODES BLOCKUSED QUEUEUSED MAXBLOCK MAXQUEUE L1 L2 TIME" > stressedQ10;
+
+echo "NQUEEN SOLUTIONS NODES BLOCKUSED QUEUEUSED MAXBLOCK MAXQUEUE L1 L2 TIME" > 1BlockSimple;
+
 
 START=0;
-QUEEN=10;
-BLOCK=5000;
-QUEUE=100;
+QUEEN=12;
+BLOCK=60000;
+QUEUE=60000;
 
-for (( i=$START; i<$QUEEN; i++ )); do
-	for (( j=$START; j<$QUEEN; j++ )); do
-		if (($i < $j)); then
-			./RCUDA2 -n $QUEEN -b $BLOCK -q $QUEUE -l $i -k $j -f >> stressedQ10; 
-			./RCUDA2 -n $QUEEN -b $BLOCK -q $QUEUE -l $i -k $j -f >> stressedQ10; 
-			./RCUDA2 -n $QUEEN -b $BLOCK -q $QUEUE -l $i -k $j -f >> stressedQ10; 
-			./RCUDA2 -n $QUEEN -b $BLOCK -q $QUEUE -l $i -k $j -f >> stressedQ10; 
-			./RCUDA2 -n $QUEEN -b $BLOCK -q $QUEUE -l $i -k $j -f >> stressedQ10; 
-		fi
-	done;
-done;
+for (( i=0; i<5; i++ )); do ./RCUDAqueen0.7.3 -n 4 -l 2 -p -m 0 >> 1BlockSimple; done;
+for (( i=0; i<5; i++ )); do ./RCUDAqueen0.7.3 -n 5 -l 2 -p -m 0 >> 1BlockSimple; done;
+for (( i=0; i<5; i++ )); do ./RCUDAqueen0.7.3 -n 6 -l 2 -p -m 0 >> 1BlockSimple; done;
+for (( i=0; i<5; i++ )); do ./RCUDAqueen0.7.3 -n 7 -l 2 -p -m 0 >> 1BlockSimple; done;
+for (( i=0; i<5; i++ )); do ./RCUDAqueen0.7.3 -n 8 -l 2 -p -m 0 >> 1BlockSimple; done;
+for (( i=0; i<5; i++ )); do ./RCUDAqueen0.7.3 -n 9 -l 2 -p -m 0 >> 1BlockSimple; done;
+for (( i=0; i<5; i++ )); do ./RCUDAqueen0.7.3 -n 10 -l 2 -p -m 0 >> 1BlockSimple; done;
+for (( i=0; i<5; i++ )); do ./RCUDAqueen0.7.3 -n 11 -l 2 -p -m 0 >> 1BlockSimple; done;
+for (( i=0; i<5; i++ )); do ./RCUDAqueen0.7.3 -n 12 -l 2 -p -m 0 >> 1BlockSimple; done;
+for (( i=0; i<5; i++ )); do ./RCUDAqueen0.7.3 -n 13 -l 2 -p -m 0 >> 1BlockSimple; done;
+for (( i=0; i<5; i++ )); do ./RCUDAqueen0.7.3 -n 14 -l 2 -p -m 0 >> 1BlockSimple; done;
 
-spd-say done;
 
-START=0;
-QUEEN=8;
-BLOCK=5000;
-QUEUE=10;
-
-for (( i=$START; i<$QUEEN; i++ )); do
-	for (( j=$START; j<$QUEEN; j++ )); do
-		if (($i < $j)); then
-			./RCUDA2 -n $QUEEN -b $BLOCK -q $QUEUE -l $i -k $j -f >> stressedQ8; 
-			./RCUDA2 -n $QUEEN -b $BLOCK -q $QUEUE -l $i -k $j -f >> stressedQ8; 
-			./RCUDA2 -n $QUEEN -b $BLOCK -q $QUEUE -l $i -k $j -f >> stressedQ8; 
-			./RCUDA2 -n $QUEEN -b $BLOCK -q $QUEUE -l $i -k $j -f >> stressedQ8; 
-			./RCUDA2 -n $QUEEN -b $BLOCK -q $QUEUE -l $i -k $j -f >> stressedQ8; 
-		fi
-	done;
-done;
+shutdown -h now;

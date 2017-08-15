@@ -1,0 +1,5 @@
+il grafico mostra l'andamente dell'esecuzione raddopiando ad ogni esecuzione il numero massimo di
+blocchi utilizzabile, lo speedUp medio che si riesce ad ottenere nei tre casi è ~1,26 ~1,27 ~ 1,32
+(l'ideale sarebbe 2), uno speedUp migliore può sicuramente essere ottenuto andando ad effettuare i miglioramenti
+già descritti.
+

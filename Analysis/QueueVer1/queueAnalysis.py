@@ -6,7 +6,7 @@ import numpy as np
 
 nQueen = 10
 
-matQ = genfromtxt("outQ10")
+matQ = genfromtxt("outWQ10")
 matNQ = genfromtxt("outNQ10")
 
 timeQ = matQ[:,9]

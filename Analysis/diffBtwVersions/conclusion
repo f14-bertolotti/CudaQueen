@@ -1,0 +1,75 @@
+
+blu - 1blockSimple
+	in questa versione l'algoritmo utilizza solamente un 1 thread - 1 blocco per eseguire intermente il codice
+	è equivalente ad un programma per cpu eseguito su gpu
+
+red - 1block
+	nonostatnte il flusso esecutivo principale in questa versione sia unico alcuni task vengono eseguiti in 
+	modo parallelo, come le copie, la propagazione e il controllo dei vincolo, in questo caso si riesce
+	ad ottenere anche un speedup > 3
+
+green - Nblock
+	infine l'ultima versione ha diversi flussi di esecuzione in numero dipendente dal livello impostato
+	e dal numero di blocchi massimi utilizzabili impostato e inpiù utilizza comunque il parallelismo dinamico 
+	delle cuda per eseguire certi task in modo parallelo (copie, propagazione, controllo vincoli)
+
+il primo subplot mostra i tempi di esecuzione al variare delle regine
+
+il secondo subplot mostra in rosso lo speedup di Nblock rispetto 1blockSimple e per un numero di
+regine superiore al 12 si riesce anche ad ottenere speedup > 100
+in blu è mostrato invece lo speedup ottenuto rispetto 1block e in questo caso per un numero di regine
+superiore al 12 si riesce ad ottenere uno speedup > 20, un risultato che mostra quanto solo la parallelizzazione
+delle attività già citate riesca ad influire complessivamente sui costi temporali.
+infine in verde abbiamo lo speedup di 1block rispetto 1blockSimple che mostra un incremente delle
+prestazione per un numero di regine maggiore al 12 di 5x.
+
+il terzo subplot invece mostra l'efficienza di Nblock rispetto ad 1Block, in questo caso abbiamo che per
+un numero di regine basso riusciamo attonere un'efficienze di ~0.5 per 5 regine,
+successivamente abbiamo invece una diminuzione considerevole dell'eficienza in questi casi cominciamo
+ad avere delle matrici più grandi e quindi copie, propagazione e controllo dei vincoli, richiedono
+un gran numero di accessi in memoria, che usando esclusivamente la memoria globale sono invitabilmente più
+lenti, non solo ma col crescere delle regine vengono usati un numero di blocchi sempre maggiore ~6000 per 12
+regine e 6000 non sono invece le unità di esecuzione parallella reale, inoltre attraverso il parallelismo
+dinamico si va anche ad aggiungere un overhead considerevole dovuto solamente al fatto che oltre un certo numero
+di richieste in attesa lo scheduler passa dall'utilizzare la fixed size pool alla virtualized pool che può portare 
+ad una riduzione delle prestazioni notevole, inoltre è importante cosiderare anche che solamente l'attività
+di fare una chiamata attraverso il parallelismo dinamico ha dei costi aggiuntivi rispetto alle normali chiamate
+a funzione all'interno del device.
+In ultimo consideriamo anche i 6000 blocchi di cui abbiamo parlato non vengono eseguiti tutti in modo parallelo,
+ma solamente una parte di essi che viene distributa tra i vari SMs (Streaming MultiProcessors), nel caso
+di una scheda video con compute capability > 5.0 (quindi in grado di supportare il parallelismo dinamico) per SM
+possono risiedere contemporaneamente 32 blocchi, e su una scheda video come la GTX 970 si hanno a disposizione 13 SM
+quindi per un totale di blocchi eseguibili in parallelo di 416.
+(tanto detto vale solamente i blocchi, infatti solitamente il ragionamento appena fatto considera non i blocchi,
+ma i singoli warp. Un warp è fondamentalmente l'unità di esecuzione a livello hardware ed è composto da 32 thread,
+warp sono indipendenti tra di loro, ma i thread all'interno di un warp sono invece dipendeti e devono eseguire tutti
+la stessa istruzione anche se a livello di programmazione questo non è richiesto, in caso il flusso esecutivo
+venga separato all'interno di un warp, vengono eseguite le istruzione di un ramo e poi dell'altro in modo sequenziale
+senza quindi andare ad ottenere il boost nelle prestazioni dovuto all'esecuzione dei 2 rami in parallelo)
+
+l'ultimo subplot mostra l'efficienza considerando che non è possibile avere più di 416 lavoratori reali paralleli 
+
+NB:
+	è sicuramente possibile ottenere prestazioni migliori facendo considerazioni riguardanti warp ed eliminando
+	le chiamate al parallelismo dinamico e utilizzando al posto di queste l'esecuzioni di blocchi con 1024 thread ciascuno.
+	Non solo ma è possibile andare utilizzare la memoria shared (che ha una latenza 100x più bassa rispetto alla memoria globale)
+	per tutta l'esecuzione della funzione solve() che si occupa	appunto di raccogliere il numero di soluzioni.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
