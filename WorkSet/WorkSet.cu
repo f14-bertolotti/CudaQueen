@@ -291,13 +291,13 @@ __global__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, i
 	__syncthreads();
 
 	if(index == nValues){
-		deviceQueenPropagation.parallelForwardPropagation(
+		deviceQueenPropagation.parallelForwardPropagation2(
 			deviceWorkSet.deviceVariableCollection[who],
 			level,
 			deviceWorkSet.deviceVariableCollection[who].deviceVariable[level].ground);
 	}
 	if(index < nValues-1){
-		deviceQueenPropagation.parallelForwardPropagation(
+		deviceQueenPropagation.parallelForwardPropagation2(
 			deviceWorkSet.deviceVariableCollection[index+count],
 			level,
 			deviceWorkSet.deviceVariableCollection[index+count].deviceVariable[level].ground);
@@ -405,7 +405,7 @@ __device__ int DeviceWorkSet::solve(int who, int level, int& nodes){
 					}
 				}else{
 					atomicAdd(&nodes,1);
-					if(deviceQueenPropagation.parallelForwardPropagation(deviceVariableCollection[who],level,val)){
+					if(deviceQueenPropagation.parallelForwardPropagation2(deviceVariableCollection[who],level,val)){
 						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
 						--level;
 					}

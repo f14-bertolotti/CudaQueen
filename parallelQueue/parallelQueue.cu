@@ -326,7 +326,7 @@ __device__ int DeviceParallelQueue::expansion(DeviceVariableCollection& element,
 													deviceVariableCollection[positions[i]].deviceVariable[level].domainSize, values[i]
 													);
 		deviceVariableCollection[positions[i]].deviceVariable[level].ground = values[i];
-		deviceQueenPropagation.parallelForwardPropagation(deviceVariableCollection[positions[i]],level,values[i],s);
+		deviceQueenPropagation.parallelForwardPropagation2(deviceVariableCollection[positions[i]],level,values[i],s);
 		end<<<1,1,0,s>>>(&lockReading[positions[i]]);
 		ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceParallelQueue::EXPANDED");
 		ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceParallelQueue::expansion::STREAM DESTRUCTION");
@@ -347,7 +347,7 @@ __device__ int DeviceParallelQueue::expansion(DeviceVariableCollection& element,
 												element.deviceVariable[level].domain, 
 												element.deviceVariable[level].domainSize, val
 												);
-	deviceQueenPropagation.parallelForwardPropagation(element,level,val,s);
+	deviceQueenPropagation.parallelForwardPropagation2(element,level,val,s);
 	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceParallelQueue::EXPANDED");
 	ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceParallelQueue::expansion::STREAM DESTRUCTION");
 

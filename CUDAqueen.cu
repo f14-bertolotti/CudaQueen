@@ -19,7 +19,7 @@
 	il flusso di esecuzione principale è unico
 */
 
-__device__ const int nQueen = 8;
+__device__ const int nQueen = 11;
 
 __device__ DeviceQueenConstraints deviceQueenConstraints;
 __device__ DeviceQueenPropagation deviceQueenPropagation;
@@ -34,6 +34,7 @@ __global__ void test(){
 	int val = 0;
 	int nSols = 0;
 	bool done = false;
+
 
 	do{
 		if(level == nQueen || deviceVariableCollection.isGround()){
@@ -54,7 +55,7 @@ __global__ void test(){
 						levelUp = 1;
 					}
 				}else{
-					if(deviceQueenPropagation.parallelForwardPropagation(deviceVariableCollection,level,val)){
+					if(deviceQueenPropagation.parallelForwardPropagation2(deviceVariableCollection,level,val)){
 						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection);
 						--level;
 					}
