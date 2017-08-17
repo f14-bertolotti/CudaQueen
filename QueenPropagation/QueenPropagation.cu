@@ -269,11 +269,20 @@ __global__ void externParallelPropagation2(DeviceVariableCollection& vc, int var
 
 
 	do{
+		
+		__syncthreads();
+		
 		ch=false;
+		
 		for(int i = var+1; i < vc.nQueen; ++i){
 
+
 			if(vc.deviceVariable[i].changed == 1){
+
+				__syncthreads();
+
 				if(vc.deviceVariable[i].ground>=0){
+
 					__syncthreads();
 
 					if(index < vc.nQueen*vc.nQueen){
@@ -322,13 +331,15 @@ __global__ void externParallelPropagation2(DeviceVariableCollection& vc, int var
 						vc.deviceVariable[index-vc.nQueen*2].checkGround();
 
 					ch = true;
-
+					__syncthreads();
 				}
 
+				__syncthreads();
 				vc.deviceVariable[i].changed=-1;
 			}
-				__syncthreads();
 		}
+		__syncthreads();
+
 	}while(ch);
 
 }
