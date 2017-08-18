@@ -237,26 +237,11 @@ __global__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, i
 
 	DeviceQueenPropagation deviceQueenPropagation;
 
-	if(index < nQueen*nQueen*3*(nValues-1)){
-		deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*count+index].var = 
-			deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*who+(index%(nQueen*nQueen*3))].var;
-		deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*count+index].val = 
-			deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*who+(index%(nQueen*nQueen*3))].val;
-		deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*count+index].cs = 
-			deviceWorkSet.tripleQueueMem[nQueen*nQueen*3*who+(index%(nQueen*nQueen*3))].cs;
+	if(index < nValues-1){
+		deviceWorkSet.deviceVariableCollection[index+count] = 
+				deviceWorkSet.deviceVariableCollection[who];
 	}
-	if(index < nQueen*nQueen*(nValues-1)){
-		deviceWorkSet.variablesMem[nQueen*nQueen*count+index] = 
-			deviceWorkSet.variablesMem[nQueen*nQueen*who+(index%(nQueen*nQueen))];
-	}
-	if(index < nQueen * (nValues-1)){
-		deviceWorkSet.lastValuesMem[nQueen*count+index] = 
-			deviceWorkSet.lastValuesMem[nQueen*who+(index%nQueen)];
-	}
-	if(index < (nValues-1)){
-		deviceWorkSet.deviceVariableCollection[index+count].deviceQueue.count =
-			deviceWorkSet.deviceVariableCollection[who].deviceQueue.count;
-	}
+	
 	__syncthreads();
 
 	int j = 0;
