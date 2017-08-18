@@ -24,6 +24,8 @@ __global__ void externParallelPropagation2(int var, int val){
 
 	if(index == 0)vc.deviceVariable[var].assign(val);
 	
+	__shared__ bool ch;
+
 	if(index < vc.nQueen*vc.nQueen){
 		if(rowIndex != var && val == columnIndex){
 
@@ -68,11 +70,6 @@ __global__ void externParallelPropagation2(int var, int val){
 	if(index >= vc.nQueen*2 && index < vc.nQueen*3)
 		vc.deviceVariable[index-vc.nQueen*2].checkGround();
 
-	bool ch = false;
-
-	__syncthreads();
-
-
 	do{
 		
 		__syncthreads();
@@ -81,11 +78,8 @@ __global__ void externParallelPropagation2(int var, int val){
 		
 		for(int i = var+1; i < vc.nQueen; ++i){
 
-			__syncthreads();
 
 			if(vc.deviceVariable[i].changed == 1){
-
-				__syncthreads();
 
 				if(vc.deviceVariable[i].ground>=0){
 
@@ -137,20 +131,14 @@ __global__ void externParallelPropagation2(int var, int val){
 						vc.deviceVariable[index-vc.nQueen*2].checkGround();
 
 					ch = true;
-					__syncthreads();
 				}
 
-				vc.deviceVariable[i].changed=-1;
 				__syncthreads();
+				vc.deviceVariable[i].changed=-1;
 			}
-
-			__syncthreads();
-
 		}
-		__syncthreads();
 
 	}while(ch);
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

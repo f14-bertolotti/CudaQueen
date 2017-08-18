@@ -59,7 +59,7 @@ struct DeviceVariableCollection{
 	__device__ void init3(DeviceVariable*,Triple*,int*,int*,int);					//initialize
 	__device__ ~DeviceVariableCollection();											//do nothing
 
-	__device__ DeviceVariableCollection& operator=(const DeviceVariableCollection&);			//copy
+	__device__ DeviceVariableCollection& operator=(DeviceVariableCollection&);			//copy
 
 	__device__ bool isGround();			//check if every variable is not failed
 	__device__ bool isFailed();			//check if every variable is ground
@@ -165,20 +165,51 @@ __device__ bool DeviceVariableCollection::isFailed(){
 
 ///////////////////////////////////////////////////////////////////////
 
-__device__ DeviceVariableCollection& DeviceVariableCollection::operator=(const DeviceVariableCollection& other){
+__global__ void externCopy(DeviceVariableCollection& to,DeviceVariableCollection& other){
 
-	MemoryManagement<Triple>::copy(other.deviceQueue.q, deviceQueue.q, nQueen*nQueen*3);
-	MemoryManagement<int>::copy(other.lastValues, lastValues, nQueen);
-	MemoryManagement<int>::copy(other.dMem, dMem, nQueen*nQueen);
+	__shared__ int nQueen; 
+	__shared__ int next1; 
+	__shared__ int next2; 
+	__shared__ int next3;
 
-	deviceQueue.count = other.deviceQueue.count;
+	nQueen = to.nQueen;
+	
+	next1 = ((((int(3*nQueen*nQueen/32)+1)*32)-3*nQueen*nQueen)+3*nQueen*nQueen);
+	next2 = ((((int((next1+nQueen*nQueen)/32)+1)*32)-(next1+nQueen*nQueen))+(next1+nQueen*nQueen));
+	next3 = ((((int((next2+nQueen)/32)+1)*32)-(next2+nQueen))+(next2+nQueen));
 
-	for(int i = 0; i < nQueen; ++i){
-		deviceVariable[i].ground = other.deviceVariable[i].ground;
-		deviceVariable[i].failed = other.deviceVariable[i].failed;
-		deviceVariable[i].changed = other.deviceVariable[i].changed;
-		deviceVariable[i].domainSize = other.deviceVariable[i].domainSize;		
+	if(threadIdx.x < 3*nQueen*nQueen)
+		to.deviceQueue.q[threadIdx.x] = other.deviceQueue.q[threadIdx.x];
+
+	if(threadIdx.x >=  next1 && threadIdx.x < next1 + nQueen*nQueen)
+		to.dMem[threadIdx.x - next1] = other.dMem[threadIdx.x - next1];
+
+	if(threadIdx.x >= next2 && threadIdx.x < next2 + nQueen)
+		to.lastValues[threadIdx.x - next2] = other.lastValues[threadIdx.x- next2];
+
+	if(threadIdx.x >= next3 && threadIdx.x < next3 + nQueen){
+		to.deviceVariable[threadIdx.x - next3].ground = other.deviceVariable[threadIdx.x - next3].ground;
+		to.deviceVariable[threadIdx.x - next3].failed = other.deviceVariable[threadIdx.x - next3].failed;
+		to.deviceVariable[threadIdx.x - next3].changed = other.deviceVariable[threadIdx.x - next3].changed;
 	}
+
+	if(threadIdx.x == 1023)
+		to.deviceQueue.count = other.deviceQueue.count;
+
+}
+
+__device__ DeviceVariableCollection& DeviceVariableCollection::operator=(DeviceVariableCollection& other){
+
+
+	cudaStream_t s;
+	ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceVariableCollection::=::STREAM CREATION");
+
+	externCopy<<<1,1024,0,s>>>(*this,other);
+
+	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceVariableCollection::=::EXTERN FORWARD PROPAGATION CALL");
+	ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceVariableCollection::=::STREAM DESTRUCTION");
+	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceVariableCollection::=::SYNCH");
+
 
 	return *this;
 }

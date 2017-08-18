@@ -333,6 +333,8 @@ __global__ void externParallelPropagation2(DeviceVariableCollection& vc, int var
 			}
 		}
 
+		if(vc.isFailed())ch = false;
+
 	}while(ch);
 
 }

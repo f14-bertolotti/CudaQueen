@@ -1,0 +1,14 @@
+la copia è sicuramente l'attività più facilmente parallelizzabile, ha una durata media di 60 microsecondi e per le
+sole 10 regine viene eseguita più di 10000 volte, tuttavia rappresenta solamente 0.2% percento del calcolo tempo di calcolo complessivo.
+
+la copia raggiunge ancora una volta una occupazione del 40% avendo 26 warp attivi sui 64 massimi teorici, e ha una
+efficienza prossima al 100%, annullando quindi i casi di divergenza all'interno di un warp.
+
+è possibile ottenere dei miglioramenti andando a gestire la memoria (per lo più costituita da interi) in un unico array di interi,
+tuttavia l'attività ha un impatto complessivo tamlmente basso che eventuali sforzi per ottimizzare il codice dovrebbe concentrarsi
+su altre attività.
+
+il tempo della copia è per più del 60% rappresentato da execuion dependency, ciò significa che i thread impiegano molto tempo
+ad aspettare l'input dalla memoria globale.
+
+di conseguenza è possibile trarre grande beneficio dall'utilizzo della memoria shared. 

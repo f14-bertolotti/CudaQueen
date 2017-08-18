@@ -1,0 +1,58 @@
+
+per 30 regine la propagazione impiega un tempo medio di 500 microsecondi, ma talvolta quando si rende necessario
+propagare in avanti può avere anche una durata di 1.2 millesecondi.
+
+per 8 regine ha invece una durata media di 176 microsecondi e in generale la propagazione avviene 672 volte.
+
+la propagazione occupa circa 15% della computazione per 8 regine usando un singolo blocco
+la propagazione occupa circa 16.6% della computazione per 9 regine usando un singolo blocco
+la propagazione occupa circa 16.3% della computazione per 10 regine usando un singolo blocco
+
+la propagazione occupa sempre meno tempo a seconda del numero di blocchi utilizzati complessivamente
+il 3% utilizzando 140 blocchi per 8 regine
+
+questo risultato indica la presenza di overhead che vanno a dilatare la tempo complessivo necessario, probabilmente
+in gran parte dovuti all'alto numero di richieste di parallelismo dinamico fatte.
+
+sempre riguardo alla propagazione con 30 regine, l'occupazione raggiunta è di circa il 43%, con un numero di 28 warp attivi per 
+alla volta contro un massimo teorico di 58.
+
+nel caso in cui la propagazione non sia singola ma proceda per altre variabili che sono diventate ground, si ha una warp efficiency
+del 70% indicando che è avvenuta divergenza all'interno del warp, inoltre i tempi richiesti per la sincronizzazione diventano maggiori del
+50% dell'esecuzione complessiva.
+
+il caso invece in cui la propagazione sia singola si ottengono dei risultati migliori, con una warp efficiency dell' 80% e tempi necessari
+per la sincronizzazione si riducono al di sotto del 50% ma rimangono comunque elevati.
+
+è possibile avere dei risultati migliori usando una indicizzazione più precisa dei thread specifica per la propagazione dei vincoli.
+
+Sono state testate 3 tipologie di propagazione:
+
+1) 	la propagazione viene effettuata in modo singolo ogni volta l'esecuzione torna al blocco padre che valuta se è necessario
+	rieseguire la propagazione evocando dinamicamente un nuovo blocco per eseguire il lavoro
+
+2)	la propagazione in avanti avviene completamente all'interno di uno solo blocco figlio, questo approccio simile al primo produce
+	tuttavia uno speedup 1.1 per le 13 regine, indicando un discreto miglioramente considerando che la propagazione occupa
+	una percentuale dell'esecuzione complessiva piuttosto bassa.
+
+3)	la propagazione viene fatta la prima volta in maniera singola, successivamente viene effettuata la propagazione in modo parallelo
+	per tutte le variabili che hanno raggiunto uno stato ground in modo parallelo, tuttavia questa versione richiede un alto numero
+	di thread (che può essere ridotto avendo una indicizzazione dei thread specifica per la propagazione), di conseguenza non è possibile
+	fare test con un numero di regine superiore al 10, nonstante tutto quest'ultima versione non porta miglioramenti ma va a contribuire
+	ad un sostanziale peggioramento delle prestazioni, la causa di questo è da cercarsi nei tempi necessari per la sincronizzazione
+	del lavoro.
+
+in conclusione si nota che riducendo il numero di chiamate effettuate la parallelismo dinamico si va ad ottenere un sostanziale miglioramento.
+è quindi possibile ottenere risultati ancora migliori andando semplicemente a ristrutturare l'algoritmo in modo tale da utilizzare
+fin dall'inizio 1 singolo blocco e 1024 thread.
+
+Tuttavia un approccio di questo tipo potrebbe invece portare a problemi di scalatura in quanto bisogna limitare il numero di
+lavoratori da utilizzabili propagazione e copie a quelli interni al singolo blocco, oltre non sarebbe possibile sincronizzare
+in modo preciso il lavoro (attraverno la __syncthreads()) necessario per il funzionamento dell'attuale algoritmo.  
+
+
+
+
+
+
+
