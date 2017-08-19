@@ -19,12 +19,18 @@ __device__ int levelDiscriminant1 = 4;
 __device__ int levelDiscriminant2 = 10;
 __device__ bool fileprint = false;
 
+__device__ int nodesPerBlock[100000];
+__device__ int nodesPerBlockCount = 0;
+__device__ bool activeNodesPerBlockCount = false;
+
 int host_nQueen = 8;
 int host_maxBlock = 10000;
 int host_maxQueue = 10000;
 int host_levelDiscriminant1 = 4;
 int host_levelDiscriminant2 = 10;
 bool host_fileprint = false;
+bool host_activeNodesPerBlockCount = false;
+
 
 __device__ int blockCount = 0;
 __device__ int nBlockInPhase2 = 0;
@@ -38,7 +44,7 @@ __device__ DeviceParallelQueue deviceParallelQueue;
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-__global__ void test(int level, int workIndex){
+__global__ void test(int level, int workIndex,int countPerBlock){
 
 	/*while(atomicCAS(&printLock,0,1)==1){}
 	deviceWorkSet.deviceVariableCollection[workIndex].print();
@@ -66,9 +72,10 @@ __global__ void test(int level, int workIndex){
 			nExpansion = deviceWorkSet.expand(workIndex,level,oldCount);
 
 			atomicAdd(&nodes,nExpansion+1);
+			nodesPerBlock[countPerBlock]+=nExpansion+1;
+
 			if(nExpansion >= 0){
 				//sono riuscito ad espandere
-				//deviceWorkSet.deviceVariableCollection[workIndex].deviceQueue.count = 0;
 
 				for(int i = oldCount; i < oldCount + nExpansion; ++i){
 
@@ -76,7 +83,7 @@ __global__ void test(int level, int workIndex){
 				 	cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
 				 	deviceWorkSet.deviceVariableCollection[i].lastValues[level] = nQueen+1;
 				 	//deviceWorkSet.deviceVariableCollection[i].deviceQueue.count = 0;
-					test<<<1,1,0,s>>>(level+1,i);
+					test<<<1,1,0,s>>>(level+1,i,atomicAdd(&nodesPerBlockCount,1));
 					cudaStreamDestroy(s);
 
 				}
@@ -94,9 +101,9 @@ __global__ void test(int level, int workIndex){
 			}else{
 				//non sono riuscito ad espandere risolvo normalmente
 				if(maxQueue > 0){
-					atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,level,nodes,levelDiscriminant2,deviceParallelQueue));
+					atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,level,nodes,countPerBlock,nodesPerBlock,levelDiscriminant2,deviceParallelQueue));
 				}else{
-					atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level,nodes));
+					atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level,nodes,countPerBlock,nodesPerBlock));
 				}
 				done = true;
 			}
@@ -104,15 +111,15 @@ __global__ void test(int level, int workIndex){
 		}else if(level >= levelDiscriminant1 && level < levelDiscriminant2){
 
 			if(maxQueue > 0){
-				atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,level,nodes,levelDiscriminant2,deviceParallelQueue));
+				atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,level,nodes,countPerBlock,nodesPerBlock,levelDiscriminant2,deviceParallelQueue));
 			}else{
-				atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level,nodes));
+				atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level,nodes,countPerBlock,nodesPerBlock));
 			}
 			done = true;
 
 		}else{
 
-			atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level,nodes));
+			atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level,nodes,countPerBlock,nodesPerBlock));
 			done = true;
 
 		}
@@ -126,12 +133,12 @@ __global__ void test(int level, int workIndex){
 		if(levelLeaved == -1){
 		}else if(levelLeaved < levelDiscriminant2){
 			if(maxQueue > 0){
-				atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,levelLeaved,nodes,levelDiscriminant2,deviceParallelQueue));
+				atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,levelLeaved,nodes,countPerBlock,nodesPerBlock,levelDiscriminant2,deviceParallelQueue));
 			}else{
-				atomicAdd(&solutions,deviceWorkSet.solve(workIndex,levelLeaved,nodes));
+				atomicAdd(&solutions,deviceWorkSet.solve(workIndex,levelLeaved,nodes,countPerBlock,nodesPerBlock));
 			}
 		}else{
-			atomicAdd(&solutions,deviceWorkSet.solve(workIndex,levelLeaved,nodes));
+			atomicAdd(&solutions,deviceWorkSet.solve(workIndex,levelLeaved,nodes,countPerBlock,nodesPerBlock));
 		}
 	}while(levelLeaved != -1);
 
@@ -150,7 +157,7 @@ __global__ void initParallelQueue(DeviceVariableCollection*,
 
 __global__ void results();
 
-__global__ void init(int,int,int,int,int,bool);
+__global__ void init(int,int,int,int,int,bool,bool);
 
 void init(int argc, char **argv);
 
@@ -200,7 +207,7 @@ int main(int argc, char **argv){
 
 	cudaStream_t s;
 	ErrorChecking::hostErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"test::STREAM CREATION");
-	test<<<1,1,0,s>>>(0,0);					
+	test<<<1,1,0,s>>>(0,0,0);					
 	ErrorChecking::hostErrorCheck(cudaStreamDestroy(s),"test::STREAM DESTRUCTION");
 	ErrorChecking::hostErrorCheck(cudaDeviceSynchronize(),"test::SYNCH");
 	ErrorChecking::hostErrorCheck(cudaPeekAtLastError(),"test::TEST ERROR");
@@ -223,7 +230,6 @@ int main(int argc, char **argv){
 
 __global__ void results(){
 
-	//deviceWorkSet.print();
 	if(!fileprint){
 		printf("\033[32msolutions  = %d\033[0m\n",solutions);
 		printf("still in queue = %d\n", deviceParallelQueue.stillInQueue());
@@ -239,6 +245,12 @@ __global__ void results(){
 		printf("%d ",maxQueue);
 		printf("%d ",levelDiscriminant1);
 		printf("%d ",levelDiscriminant2);
+	}
+	if(activeNodesPerBlockCount){
+		printf("\n");
+		for(int i = 0; i < nodesPerBlockCount; ++i){
+			printf("%d %d\n", i,nodesPerBlock[i]);
+		}
 	}
 }
 
@@ -288,7 +300,7 @@ __global__ void initParallelQueue(DeviceVariableCollection* deviceVariableCollec
 
 void init(int argc, char **argv){
 	char c;
-	while ((c = getopt (argc, argv, "fq:k:l:b:n:")) != -1){
+	while ((c = getopt (argc, argv, "ofq:k:l:b:n:")) != -1){
 		switch (c){
 			case 'n':
 				host_nQueen = atoi(optarg);
@@ -308,6 +320,9 @@ void init(int argc, char **argv){
 			case 'f':
 				host_fileprint = true;
 				break;
+			case 'o':
+				host_activeNodesPerBlockCount = true;
+				break;
 			default:
 				abort();
 		}
@@ -323,19 +338,20 @@ void init(int argc, char **argv){
 		printf("-------------------------\n");
 	}else
 
-	init<<<1,1>>>(host_nQueen,host_maxBlock,host_maxQueue,host_levelDiscriminant1,host_levelDiscriminant2,host_fileprint);
+	init<<<1,1>>>(host_nQueen,host_maxBlock,host_maxQueue,host_levelDiscriminant1,host_levelDiscriminant2,host_fileprint,host_activeNodesPerBlockCount);
 	cudaDeviceSynchronize();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-__global__ void init(int n,int b,int q,int l,int k,bool f){
+__global__ void init(int n,int b,int q,int l,int k,bool f,bool o){
 	nQueen = n;
 	maxBlock = b;
 	maxQueue = q;
 	levelDiscriminant1 = l;
 	levelDiscriminant2 = k;
 	fileprint = f;
+	activeNodesPerBlockCount = o;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

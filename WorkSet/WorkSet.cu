@@ -99,10 +99,10 @@ struct DeviceWorkSet{
 											//for a chosen variable collection, return number of expansions
 											//-1 otherwise
 
-	__device__ int solve(int,int,int&); 	//solve csp for all variable over a specific level
+	__device__ int solve(int,int,int&,int,int*); 	//solve csp for all variable over a specific level
 									//and returns the number of solutions.
 
-	__device__ int solveAndAdd(int,int,int&,int,DeviceParallelQueue&);
+	__device__ int solveAndAdd(int,int,int&,int,int*,int,DeviceParallelQueue&);
 									//put in queue everything before level discriminant chosen
 									//then it solve the csp 
 
@@ -352,7 +352,7 @@ __device__ void DeviceWorkSet::print(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceWorkSet::solve(int who, int level, int& nodes){
+__device__ int DeviceWorkSet::solve(int who, int level, int& nodes, int count, int* nodesPerBlock){
 
 
 	int ltemp = level - 1;
@@ -390,6 +390,7 @@ __device__ int DeviceWorkSet::solve(int who, int level, int& nodes){
 					}
 				}else{
 					atomicAdd(&nodes,1);
+					++nodesPerBlock[count];
 					if(deviceQueenPropagation.parallelForwardPropagation2(deviceVariableCollection[who],level,val)){
 						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
 						--level;
@@ -410,7 +411,7 @@ __device__ int DeviceWorkSet::solve(int who, int level, int& nodes){
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-__device__ int DeviceWorkSet::solveAndAdd(int who ,int level , int& nodes,int levelDiscriminant, DeviceParallelQueue& deviceParallelQueue){
+__device__ int DeviceWorkSet::solveAndAdd(int who ,int level , int& nodes, int count, int* nodesPerBlock, int levelDiscriminant, DeviceParallelQueue& deviceParallelQueue){
 
 	int nSols = 0;
 
@@ -430,14 +431,16 @@ __device__ int DeviceWorkSet::solveAndAdd(int who ,int level , int& nodes,int le
 		while(deviceVariableCollection[who].deviceVariable[level].ground >= 0){
 			++level;
 			if(level >= levelDiscriminant){
-				return nSols + solve(who,level,nodes);
+				return nSols + solve(who,level,nodes,count,nodesPerBlock);
 			}
 		}
 
 
 		int nVal = deviceParallelQueue.expansion(deviceVariableCollection[who],level);
-		if(nVal != -1)atomicAdd(&nodes, nVal);
-		else return nSols + solve(who,level,nodes);
+		if(nVal != -1){
+			atomicAdd(&nodes, nVal);
+			nodesPerBlock[count] += nVal;
+		}else return nSols + solve(who,level,nodes,count,nodesPerBlock);
 
 		if(deviceVariableCollection[who].isFailed()){
 			//il primo è fallito
@@ -452,7 +455,7 @@ __device__ int DeviceWorkSet::solveAndAdd(int who ,int level , int& nodes,int le
 		++level;
 
 		if(level >= levelDiscriminant)
-			return nSols + solve(who,level,nodes);
+			return nSols + solve(who,level,nodes,count,nodesPerBlock);
 	}
 
 

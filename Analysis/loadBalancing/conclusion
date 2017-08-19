@@ -1,0 +1,25 @@
+vogliamo valutare quanto effettivamente l'algoritmo risulti essere bilanciato rispetto ai cammini di esecuzione, per valutare 
+questo importante parametro ci concentriamo sui nodi esplorato da ogni singolo lavoratore sia in presenza della coda che in sua assenza.
+i dati sono stati raccolti utilizzando 8 regine.
+da notare che i blocchi non cominciano l'esecuzione tutti assieme ma vengono generati dinamicamente man mano che si esplora l'albero, in
+particolare fino a che non si raggiunge un certo livello, di conseguenza il blocco 0 che inizia per primo esplorerà più nodi degli,
+altri.
+
+i risultati sono i seguenti
+
+			non usando la coda			usando la coda
+			lv1		lv2		lv3			lv1		lv2		lv3
+AVERAGE		96		16		4			96		16		4
+VAR			1097	38		12			1782	41		11
+SUM			672		672		672			672		672		672
+MIN			77		8		0			64		5		0
+MAX			170		45		30			167		38		30
+
+
+aumentare il livello significa aumentare il numero di lavoratori in esecuzione che vanno a spezzare in modo naturalmente più fine l'albero
+dei possibili nodi, di conseguenza si ottiene un bilanciamento del lavoro prossimo al caso in cui si vada ad utilizzare la coda.
+Altrettanto non è vero nel caso in cui i lavoratori sia in numero basso (livello 1), in questo caso la coda sembra causare un aumento
+della varianza(¿).
+
+In ogni caso il numero di nodi esplorati dipende fortemente dal livello di generazione del blocco, più il livello è basso prima il blocco, 
+comincia la sua esecuzione e più nodi esplora, questo spiega perchè la coda non influisca sul numero minimo e sul numero massimo.
