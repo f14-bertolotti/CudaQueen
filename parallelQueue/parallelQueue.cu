@@ -321,10 +321,10 @@ __device__ int DeviceParallelQueue::expansion(DeviceVariableCollection& element,
 		ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceParallelQueue::expansion");
 
 		externCopy<<<1,nQueen*nQueen,0,s>>>(element,deviceVariableCollection[positions[i]],level);
-		externAssignParallel<<<1,deviceVariableCollection[positions[i]].deviceVariable[level].domainSize,0,s>>>(
-													deviceVariableCollection[positions[i]].deviceVariable[level].domain, 
-													deviceVariableCollection[positions[i]].deviceVariable[level].domainSize, values[i]
-													);
+		externAssignParallel(
+							deviceVariableCollection[positions[i]].deviceVariable[level].domain, 
+							deviceVariableCollection[positions[i]].deviceVariable[level].domainSize, values[i]
+							);
 		deviceVariableCollection[positions[i]].deviceVariable[level].ground = values[i];
 		deviceQueenPropagation.parallelForwardPropagation2(deviceVariableCollection[positions[i]],level,values[i],s);
 		end<<<1,1,0,s>>>(&lockReading[positions[i]]);
@@ -343,10 +343,10 @@ __device__ int DeviceParallelQueue::expansion(DeviceVariableCollection& element,
 	cudaStream_t s;
 	ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceParallelQueue::expansion");
 
-	externAssignParallel<<<1,element.deviceVariable[level].domainSize,0,s>>>(
-												element.deviceVariable[level].domain, 
-												element.deviceVariable[level].domainSize, val
-												);
+	externAssignParallel(
+						element.deviceVariable[level].domain, 
+						element.deviceVariable[level].domainSize, val
+						);
 	deviceQueenPropagation.parallelForwardPropagation2(element,level,val,s);
 	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceParallelQueue::EXPANDED");
 	ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceParallelQueue::expansion::STREAM DESTRUCTION");

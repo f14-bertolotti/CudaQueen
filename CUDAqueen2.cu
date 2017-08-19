@@ -46,103 +46,63 @@ __device__ DeviceParallelQueue deviceParallelQueue;
 
 __global__ void test(int level, int workIndex,int countPerBlock){
 
-	/*while(atomicCAS(&printLock,0,1)==1){}
-	deviceWorkSet.deviceVariableCollection[workIndex].print();
-	printLock = 0;*/
-
-
-	bool done = false;
-
-	if(deviceWorkSet.deviceVariableCollection[workIndex].isFailed()){
-		done = true;
-	}else if(deviceWorkSet.deviceVariableCollection[workIndex].isGround()){
-		if(deviceQueenConstraints.solution(deviceWorkSet.deviceVariableCollection[workIndex],true)){
+	if(deviceWorkSet.deviceVariableCollection[workIndex].isFailed())return;
+__syncthreads();
+	if(deviceWorkSet.deviceVariableCollection[workIndex].isGround()){
+		if(threadIdx.x == 0){
 			atomicAdd(&solutions,1);
-			done = true;
 		}
+__syncthreads();
+		return;
 	}
 
-	while(!done){
+	__syncthreads();
 
-		if(level < levelDiscriminant1){
+	while(level < levelDiscriminant1){
 
-			//espansione
+__syncthreads();
+
 			int nExpansion = 0;
 			int oldCount = 0;
+__syncthreads();
 			nExpansion = deviceWorkSet.expand(workIndex,level,oldCount);
 
-			atomicAdd(&nodes,nExpansion+1);
-			nodesPerBlock[countPerBlock]+=nExpansion+1;
+			__syncthreads();
 
-			if(nExpansion >= 0){
-				//sono riuscito ad espandere
-
+			if(threadIdx.x == 0){
+			 	deviceWorkSet.deviceVariableCollection[workIndex].lastValues[level] = nQueen+1;
 				for(int i = oldCount; i < oldCount + nExpansion; ++i){
 
 				  	cudaStream_t s;
 				 	cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
 				 	deviceWorkSet.deviceVariableCollection[i].lastValues[level] = nQueen+1;
-				 	//deviceWorkSet.deviceVariableCollection[i].deviceQueue.count = 0;
-					test<<<1,1,0,s>>>(level+1,i,atomicAdd(&nodesPerBlockCount,1));
+					test<<<1,1024,0,s>>>(level+1,i,atomicAdd(&nodesPerBlockCount,1));
 					cudaStreamDestroy(s);
 
 				}
-
-				if(deviceWorkSet.deviceVariableCollection[workIndex].isFailed()){
-					done = true;
-				}else if(deviceWorkSet.deviceVariableCollection[workIndex].isGround()){
-					if(deviceQueenConstraints.solution(deviceWorkSet.deviceVariableCollection[workIndex],true)){
-						atomicAdd(&solutions,1);
-					}
-					done = true;
-				}
-
-				++level;
-			}else{
-				//non sono riuscito ad espandere risolvo normalmente
-				if(maxQueue > 0){
-					atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,level,nodes,countPerBlock,nodesPerBlock,levelDiscriminant2,deviceParallelQueue));
-				}else{
-					atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level,nodes,countPerBlock,nodesPerBlock));
-				}
-				done = true;
 			}
-
-		}else if(level >= levelDiscriminant1 && level < levelDiscriminant2){
-
-			if(maxQueue > 0){
-				atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,level,nodes,countPerBlock,nodesPerBlock,levelDiscriminant2,deviceParallelQueue));
-			}else{
-				atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level,nodes,countPerBlock,nodesPerBlock));
+__syncthreads();
+			if(deviceWorkSet.deviceVariableCollection[workIndex].isFailed())return;
+__syncthreads();
+			if(deviceWorkSet.deviceVariableCollection[workIndex].isGround()){
+				if(threadIdx.x == 0){
+					atomicAdd(&solutions,1);
+				}
+__syncthreads();
+				return;
 			}
-			done = true;
+__syncthreads();
+			++level;
 
-		}else{
-
-			atomicAdd(&solutions,deviceWorkSet.solve(workIndex,level,nodes,countPerBlock,nodesPerBlock));
-			done = true;
-
-		}
-
+			__syncthreads();
+			
 	}
+__syncthreads();
+	int tSol = deviceWorkSet.solve(workIndex,level,nodes,countPerBlock,nodesPerBlock);
+__syncthreads();
+	if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}
 
-
-	int levelLeaved = 0;
-	do{
-		levelLeaved = deviceParallelQueue.read(deviceWorkSet.deviceVariableCollection[workIndex],workIndex);
-		if(levelLeaved == -1){
-		}else if(levelLeaved < levelDiscriminant2){
-			if(maxQueue > 0){
-				atomicAdd(&solutions,deviceWorkSet.solveAndAdd(workIndex,levelLeaved,nodes,countPerBlock,nodesPerBlock,levelDiscriminant2,deviceParallelQueue));
-			}else{
-				atomicAdd(&solutions,deviceWorkSet.solve(workIndex,levelLeaved,nodes,countPerBlock,nodesPerBlock));
-			}
-		}else{
-			atomicAdd(&solutions,deviceWorkSet.solve(workIndex,levelLeaved,nodes,countPerBlock,nodesPerBlock));
-		}
-	}while(levelLeaved != -1);
-
-
+	return;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -205,12 +165,8 @@ int main(int argc, char **argv){
 	float   elapsedTime;
 	cudaEventRecord( start, 0 );
 
-	cudaStream_t s;
-	ErrorChecking::hostErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"test::STREAM CREATION");
-	test<<<1,1,0,s>>>(0,0,0);					
-	ErrorChecking::hostErrorCheck(cudaStreamDestroy(s),"test::STREAM DESTRUCTION");
-	ErrorChecking::hostErrorCheck(cudaDeviceSynchronize(),"test::SYNCH");
-	ErrorChecking::hostErrorCheck(cudaPeekAtLastError(),"test::TEST ERROR");
+	test<<<1,1024>>>(0,0,0);					
+
 
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
@@ -229,6 +185,8 @@ int main(int argc, char **argv){
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 __global__ void results(){
+
+	//deviceWorkSet.print();
 
 	if(!fileprint){
 		printf("\033[32msolutions  = %d\033[0m\n",solutions);

@@ -20,7 +20,7 @@ struct DeviceQueenConstraints{
 
 	////////////////////////////////////////////////////////////////////////////////////////
 
-	__device__ bool static inline solution(DeviceVariableCollection&,bool);			//check solution	
+	__device__ bool static inline solution(DeviceVariableCollection&);			//check solution	
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -130,10 +130,101 @@ __device__ bool inline DeviceQueenConstraints::checkLDiagConstraint(DeviceVariab
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
-__device__ bool inline DeviceQueenConstraints::solution(DeviceVariableCollection& vc, bool fullParallel){
+__device__ bool inline DeviceQueenConstraints::solution(DeviceVariableCollection& vc){
+	__shared__	bool res1, res2;
 
-	if(fullParallel) return parallelConstraints(vc);
-	else return checkRowConstraint(vc) && checkColConstraint(vc) && checkRDiagConstraint(vc) && checkLDiagConstraint(vc);
+	res1 = res2 = true;
+
+	int sum,i,j,what;
+
+	__syncthreads();
+
+	if(threadIdx.x < vc.nQueen*4){
+
+		if(threadIdx.x < vc.nQueen)what = 0;
+		else if(threadIdx.x >= vc.nQueen && threadIdx.x<2*vc.nQueen)what = 1;
+		else if(threadIdx.x >= 2*vc.nQueen && threadIdx.x<3*vc.nQueen)what = 2;
+		else if(threadIdx.x >= 3*vc.nQueen && threadIdx.x<4*vc.nQueen)what = 3;
+
+		switch(what){
+			case 0:{
+				j = threadIdx.x % vc.nQueen;
+				i = 0;
+				sum = 0;
+				while(j < vc.nQueen && i < vc.nQueen){
+					if(vc.dMem[vc.nQueen*i + j]==1)++sum;
+					++j;
+					++i;
+				}
+				if(sum > 1){
+					res1 = false;					
+				}
+				break;
+			}
+			case 1:{
+
+				i = threadIdx.x % vc.nQueen;
+				j = 0;
+				sum = 0;
+				while(j < vc.nQueen && i < vc.nQueen){
+					if(vc.dMem[vc.nQueen*i + j]==1)++sum;
+					++j;
+					++i;
+				}
+		
+				if(sum > 1){
+					res1 = false;
+				}
+				break;
+			}
+			case 2:{
+
+				j = threadIdx.x % vc.nQueen;
+				i = 0;
+				sum = 0;
+				while(j >= 0 && i < vc.nQueen){
+					if(vc.dMem[vc.nQueen*i + j]==1)++sum;
+					--j;
+					++i;
+				}
+
+				if(sum > 1){
+					res1 = false;
+				}
+				break;
+			}
+			case 3:{
+				i = threadIdx.x % vc.nQueen;
+				j = vc.nQueen-1;
+				sum = 0;
+				while(j >= 0 && i < vc.nQueen){
+					if(vc.dMem[vc.nQueen*i + j]==1)++sum;
+					--j;
+					++i;
+				}
+				if(sum > 1){
+					res1 = false;
+				}
+				break;
+			}
+		}
+	}
+
+	__syncthreads();
+
+	sum = 0;
+	for(int i = 0 ; i < vc.nQueen; ++i){
+		if(vc.dMem[i*vc.nQueen+threadIdx.x]==1)
+			++sum;
+	}
+	
+	if(sum != 1){
+		res2 = false;
+	}
+
+	__syncthreads();
+
+	return res1 && res2;;
 
 }
 

@@ -165,7 +165,7 @@ __device__ bool DeviceVariableCollection::isFailed(){
 
 ///////////////////////////////////////////////////////////////////////
 
-__global__ void externCopy(DeviceVariableCollection& to,DeviceVariableCollection& other){
+__device__ void externCopy(DeviceVariableCollection& to,DeviceVariableCollection& other){
 
 	__shared__ int nQueen; 
 	__shared__ int next1; 
@@ -200,16 +200,33 @@ __global__ void externCopy(DeviceVariableCollection& to,DeviceVariableCollection
 
 __device__ DeviceVariableCollection& DeviceVariableCollection::operator=(DeviceVariableCollection& other){
 
+	__shared__ int next1; 
+	__shared__ int next2; 
+	__shared__ int next3;
 
-	cudaStream_t s;
-	ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceVariableCollection::=::STREAM CREATION");
+	next1 = ((((int(3*nQueen*nQueen/32)+1)*32)-3*nQueen*nQueen)+3*nQueen*nQueen);
+	next2 = ((((int((next1+nQueen*nQueen)/32)+1)*32)-(next1+nQueen*nQueen))+(next1+nQueen*nQueen));
+	next3 = ((((int((next2+nQueen)/32)+1)*32)-(next2+nQueen))+(next2+nQueen));
 
-	externCopy<<<1,1024,0,s>>>(*this,other);
+	if(threadIdx.x < 3*nQueen*nQueen)
+		this->deviceQueue.q[threadIdx.x] = other.deviceQueue.q[threadIdx.x];
 
-	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceVariableCollection::=::EXTERN FORWARD PROPAGATION CALL");
-	ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceVariableCollection::=::STREAM DESTRUCTION");
-	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceVariableCollection::=::SYNCH");
+	if(threadIdx.x >=  next1 && threadIdx.x < next1 + nQueen*nQueen)
+		this->dMem[threadIdx.x - next1] = other.dMem[threadIdx.x - next1];
 
+	if(threadIdx.x >= next2 && threadIdx.x < next2 + nQueen)
+		this->lastValues[threadIdx.x - next2] = other.lastValues[threadIdx.x- next2];
+
+	if(threadIdx.x >= next3 && threadIdx.x < next3 + nQueen){
+		this->deviceVariable[threadIdx.x - next3].ground = other.deviceVariable[threadIdx.x - next3].ground;
+		this->deviceVariable[threadIdx.x - next3].failed = other.deviceVariable[threadIdx.x - next3].failed;
+		this->deviceVariable[threadIdx.x - next3].changed = other.deviceVariable[threadIdx.x - next3].changed;
+	}
+
+	if(threadIdx.x == 1023)
+		this->deviceQueue.count = other.deviceQueue.count;
+
+	__syncthreads();
 
 	return *this;
 }

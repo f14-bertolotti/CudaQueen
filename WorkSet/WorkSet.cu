@@ -95,7 +95,7 @@ struct DeviceWorkSet{
 	__device__ void init(DeviceVariableCollection*,DeviceVariable*,int*,int*,Triple*,int,int);		//initialize
 	__device__ ~DeviceWorkSet();																	//do nothing
 
-	__device__ int expand(int,int,int&);	//prepare for parallel computation on a specific level
+	__device__ int expand(int,int&,int&);	//prepare for parallel computation on a specific level
 											//for a chosen variable collection, return number of expansions
 											//-1 otherwise
 
@@ -231,67 +231,95 @@ __device__ DeviceWorkSet::~DeviceWorkSet(){}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__global__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, int level, int nValues, int nQueen){
+__device__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, int& level, int& nValues, int nQueen){
 
-	int index = threadIdx.x + blockIdx.x * blockDim.x;
+	__shared__ int sharedCount;
+	sharedCount = count;
+
+
+	__syncthreads();
+//	if(threadIdx.x == 0)printf("%d - %d\n", sharedCount,nValues);
 
 	DeviceQueenPropagation deviceQueenPropagation;
 
-	if(index < nValues-1){
-		deviceWorkSet.deviceVariableCollection[index+count] = 
-				deviceWorkSet.deviceVariableCollection[who];
+	__syncthreads();
+
+	for (int i = sharedCount; i < sharedCount+nValues-1; ++i){
+__syncthreads();
+		deviceWorkSet.deviceVariableCollection[i] = deviceWorkSet.deviceVariableCollection[who];
+__syncthreads();
 	}
 	
 	__syncthreads();
 
 	int j = 0;
 	int i = 0;
-	if(index == 1){
-		for(i = 0; i < nQueen && j<(nValues-1); ++i){
-			if(deviceWorkSet.deviceVariableCollection[count+j].deviceVariable[level].domain[i] == 1){
-				cudaStream_t s;
-				ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"externExpand::STREAM CREATION");
-				externAssignParallel<<<1,nQueen,0,s>>>(deviceWorkSet.deviceVariableCollection[count+j].deviceVariable[level].domain,nQueen,i);
-				ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"externExpand::EXTERN ASSIGN PARALLEL CALL");
-				deviceWorkSet.deviceVariableCollection[count+j].deviceVariable[level].ground = i;
-				deviceWorkSet.deviceVariableCollection[count+j].lastValues[level] = i+1;
-				ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"externExpand::STREAM DESTRUCTION");
-				++j;
-			}
-		}
-		for(; i < nQueen; ++i){
-			if(deviceWorkSet.deviceVariableCollection[who].deviceVariable[level].domain[i] == 1){
 
-				cudaStream_t s;
-				ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"externExpand::STREAM CREATION");
-				externAssignParallel<<<1,nQueen,0,s>>>(deviceWorkSet.deviceVariableCollection[who].deviceVariable[level].domain,nQueen,i);
-				deviceWorkSet.deviceVariableCollection[who].deviceVariable[level].ground = i;
-				deviceWorkSet.deviceVariableCollection[who].lastValues[level] = i+1;
-
-				break;
-			}
-		}
-	}
 
 	__syncthreads();
 
-	if(index == nValues){
-		deviceQueenPropagation.parallelForwardPropagation2(
-			deviceWorkSet.deviceVariableCollection[who],
-			level,
-			deviceWorkSet.deviceVariableCollection[who].deviceVariable[level].ground);
+
+	for(; i < nQueen && j < nValues-1;++i){
+
+		__syncthreads();
+
+		if(deviceWorkSet.deviceVariableCollection[sharedCount+j].deviceVariable[level].domain[i] == 1){
+			
+			__syncthreads();
+
+			if(threadIdx.x < nQueen && threadIdx.x != i)
+				--deviceWorkSet.deviceVariableCollection[sharedCount+j].deviceVariable[level].domain[threadIdx.x];
+			deviceWorkSet.deviceVariableCollection[sharedCount+j].deviceVariable[level].ground = i;
+			deviceWorkSet.deviceVariableCollection[sharedCount+j].lastValues[level] = i+1;
+
+			++j;
+
+		}
+
+		__syncthreads();
 	}
-	if(index < nValues-1){
-		deviceQueenPropagation.parallelForwardPropagation2(
-			deviceWorkSet.deviceVariableCollection[index+count],
-			level,
-			deviceWorkSet.deviceVariableCollection[index+count].deviceVariable[level].ground);
+
+__syncthreads();
+
+	for(;i < nQueen;++i){
+
+		__syncthreads();
+
+		if(deviceWorkSet.deviceVariableCollection[who].deviceVariable[level].domain[i] == 1){
+			__syncthreads();
+			if(threadIdx.x < nQueen && threadIdx.x != i)
+				--deviceWorkSet.deviceVariableCollection[who].deviceVariable[level].domain[threadIdx.x];
+			deviceWorkSet.deviceVariableCollection[who].deviceVariable[level].ground = i;
+			deviceWorkSet.deviceVariableCollection[who].lastValues[level] = i+1;
+__syncthreads();
+			break;
+		}
+
+		__syncthreads();
+
 	}
+__syncthreads();
+	
+	for(int i = sharedCount; i < sharedCount+nValues-1; ++i){
+__syncthreads();
+			deviceQueenPropagation.parallelForwardPropagation2(
+				deviceWorkSet.deviceVariableCollection[i],
+				level,
+				deviceWorkSet.deviceVariableCollection[i].deviceVariable[level].ground);
+			__syncthreads();
+	}
+__syncthreads();
+	deviceQueenPropagation.parallelForwardPropagation2(
+		deviceWorkSet.deviceVariableCollection[who],
+		level,
+		deviceWorkSet.deviceVariableCollection[who].deviceVariable[level].ground);
+__syncthreads();
+	return;
+
 }
 
-__device__ int temp = 1;
 
-__device__ int DeviceWorkSet::expand(int who, int level, int& oldCount){
+__device__ int DeviceWorkSet::expand(int who, int& level, int& oldCount){
 
 	if(who < 0 || who >= count){
 		ErrorChecking::deviceError("Error::DeviceWorkSet::expand::VARIABLE COLLECTION INDEX OUT OF BOUND");
@@ -302,38 +330,65 @@ __device__ int DeviceWorkSet::expand(int who, int level, int& oldCount){
 		ErrorChecking::deviceError("Error::DeviceWorkSet::expand::LEVEL OUT OF BOUND");
 		return -1;
 	}
+__syncthreads();
+	__shared__ int nValues;
+__syncthreads();
+	nValues = 0;
 
-	int nValues = 0;
-	for(int value = 0; value < nQueen; ++value)
-		if(deviceVariableCollection[who].deviceVariable[level].domain[value] == 1)
-			++nValues;
+	__syncthreads();
 
-	while(atomicCAS(&lockCount,0,1)==1){}
+	if(threadIdx.x == 0){
+		for(int i = 0; i < nQueen; ++i){
+			if(deviceVariableCollection[who].deviceVariable[level].domain[i] == 1){
+				++nValues;
+			}
+		}
+	}
+
+	/*if(threadIdx.x < nQueen && deviceVariableCollection[who].deviceVariable[level].domain[threadIdx.x] == 1){
+		atomicAdd(&nValues,1);
+	}*/
+
+	__syncthreads();
+
+	if(nValues <= 1)return 0;
+
+
+	__shared__ int t;
+
+	__syncthreads();
+
+	if(threadIdx.x == 0){
+		t = atomicAdd(&count, nValues-1);
+	}
+
+	__syncthreads(); 
+	
+	oldCount = t;
+
+	__syncthreads();
+
 	if((nValues-1) + count > nVariableCollection){
 		ErrorChecking::deviceMessage("Warn::DeviceWorkSet::expand::NOT ENOUGH SPACE");
-		lockCount = 0;
 		return -1;
 	}
+
+__syncthreads();
 
 	if(nValues == 0){
 		ErrorChecking::deviceMessage("Warn::DeviceWorkSet::expand::VARIABLE IS FAILED");
 		return 0;
 	}
 
-	atomicAdd(&temp,nValues-1);
+__syncthreads();
 
-	oldCount =  count;
-	count += nValues-1;
 
-	lockCount = 0;	
 
-	cudaStream_t s;
-	ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceWorkSet::expand::STREAM CREATION");
-	externExpand<<<int(nQueen*nQueen*3*nValues)/1000+1,1000,0,s>>>(*this,who,oldCount,level,nValues,nQueen);
-	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceWorkSet::expand::EXTERN EXPAND CALL");
-	ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceWorkSet::expand::STREAM DESTRUCTION");
+__syncthreads();
 
-	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceWorkSet::expand::SYNCH");
+	externExpand(*this,who,t,level,nValues,nQueen);
+
+__syncthreads();
 
 	return nValues-1;
 }
@@ -352,59 +407,114 @@ __device__ void DeviceWorkSet::print(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceWorkSet::solve(int who, int level, int& nodes, int count, int* nodesPerBlock){
+__device__ int DeviceWorkSet::solve(int who, int outLevel, int& nodes, int count, int* nodesPerBlock){
+
+	__shared__ int level;
+	__shared__ int ltemp;
+	__shared__ int levelUp;
+	__shared__ int val;
+	__shared__ int nSols;
+	__shared__ bool done;
+
+	__syncthreads();
 
 
-	int ltemp = level - 1;
-	int levelUp = 1;
-	int val = 0;
-	int nSols = 0;
-	bool done = false;
-
-	if(deviceVariableCollection[who].isFailed()){
-		return 0;
-	}else if(deviceVariableCollection[who].isGround()){
-		if(deviceQueenConstraints.solution(deviceVariableCollection[who],true)){
-			return 1;
-		}
-		return 0;
-	}
-
+	level = outLevel;
+	ltemp = outLevel-1;
+	levelUp = 1;
+	val = 0;
+	nSols = 0;
+	done = false;
+__syncthreads();
 	do{
-		if(level == nQueen || deviceVariableCollection[who].isGround()){
-			if(deviceQueenConstraints.solution(deviceVariableCollection[who],true)){
-				++nSols;
-			}
+
+		__syncthreads();
+		if(deviceVariableCollection[who].isGround()){
+			if(threadIdx.x == 0)++nSols;
+			__syncthreads();
 			deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
-			--level;			
+			if(threadIdx.x == 0){
+				--level;
+			}	
+
 		}else{
+			__syncthreads();
+
 			if(deviceVariableCollection[who].deviceVariable[level].ground < 0){
+				__syncthreads();
+
 				val = deviceQueenPropagation.nextAssign(deviceVariableCollection[who],level);
+				
+__syncthreads();
+
 				if(val == -1){
+__syncthreads();
+
 					if(level <= ltemp+1){
+__syncthreads();		
+
 						done = true;
+__syncthreads();
 					}else{
+__syncthreads();
+
 						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
-						level -= levelUp;
-						levelUp = 1;
+__syncthreads();
+
+						if(threadIdx.x == 0){
+							level -= levelUp;
+							levelUp = 1;
+
+						}
+__syncthreads();
+
 					}
+__syncthreads();
+
 				}else{
-					atomicAdd(&nodes,1);
-					++nodesPerBlock[count];
+
+__syncthreads();
 					if(deviceQueenPropagation.parallelForwardPropagation2(deviceVariableCollection[who],level,val)){
+						__syncthreads();
 						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
-						--level;
+__syncthreads();
+
+						if(threadIdx.x == 0){
+							--level;
+						}
+__syncthreads();
+
 					}
-					++level;
+					__syncthreads();
+
+					if(threadIdx.x == 0)++level;
+__syncthreads();
+
 				}
+
+__syncthreads();
 			}else{
-				++level;
-				++levelUp;
+				__syncthreads();
+
+				if(threadIdx.x == 0){
+					++level;
+					++levelUp;
+				}
+__syncthreads();
 			}
+__syncthreads();
 		}
-		if(level == ltemp)done = true;
+__syncthreads();
+		__syncthreads();
+
+		if(level == ltemp){
+			done = true;
+		}
+
+		__syncthreads();
 	}while(!done);
 
+__syncthreads();
 	return nSols;
 }
 
@@ -419,7 +529,7 @@ __device__ int DeviceWorkSet::solveAndAdd(int who ,int level , int& nodes, int c
 	if(deviceVariableCollection[who].isFailed()){
 		return 0;
 	}else if(deviceVariableCollection[who].isGround()){
-		if(deviceQueenConstraints.solution(deviceVariableCollection[who],true)){
+		if(deviceQueenConstraints.solution(deviceVariableCollection[who])){
 			return 1;
 		}
 		return 0;
@@ -446,7 +556,7 @@ __device__ int DeviceWorkSet::solveAndAdd(int who ,int level , int& nodes, int c
 			//il primo è fallito
 			return nSols;
 		}else if(deviceVariableCollection[who].isGround()){
-			if(deviceQueenConstraints.solution(deviceVariableCollection[who],true)){
+			if(deviceQueenConstraints.solution(deviceVariableCollection[who])){
 				return nSols + 1;
 			}
 			return nSols;

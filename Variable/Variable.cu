@@ -122,7 +122,7 @@ __device__ inline void externAssignSequential(int* domain, int size, int value){
 
 }
 
-__global__ void externAssignParallel(int* domain, int size, int value){
+__device__ void externAssignParallel(int* domain, int size, int value){
 
 	if(threadIdx.x + blockIdx.x * blockDim.x < size && 
 	   threadIdx.x + blockIdx.x * blockDim.x != value)
@@ -153,12 +153,7 @@ __device__ inline int DeviceVariable::assign(int value){
 	}
 
 
-	cudaStream_t s;
-	ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceVariable::assign");
-	externAssignParallel<<<1,domainSize,0,s>>>(domain, domainSize, value);
-	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceVariable::assign");
-	ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceVariable::assign");
-	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceVariable::assign");
+	externAssignParallel(domain, domainSize, value);
 
 	ground = value;
 	return 0;
