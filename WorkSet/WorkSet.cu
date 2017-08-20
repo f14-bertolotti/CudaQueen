@@ -236,18 +236,11 @@ __device__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, i
 	__shared__ int sharedCount;
 	sharedCount = count;
 
-
-	__syncthreads();
-//	if(threadIdx.x == 0)printf("%d - %d\n", sharedCount,nValues);
-
 	DeviceQueenPropagation deviceQueenPropagation;
 
-	__syncthreads();
 
 	for (int i = sharedCount; i < sharedCount+nValues-1; ++i){
-__syncthreads();
 		deviceWorkSet.deviceVariableCollection[i] = deviceWorkSet.deviceVariableCollection[who];
-__syncthreads();
 	}
 	
 	__syncthreads();
@@ -255,13 +248,8 @@ __syncthreads();
 	int j = 0;
 	int i = 0;
 
-
-	__syncthreads();
-
-
 	for(; i < nQueen && j < nValues-1;++i){
 
-		__syncthreads();
 
 		if(deviceWorkSet.deviceVariableCollection[sharedCount+j].deviceVariable[level].domain[i] == 1){
 			
@@ -276,14 +264,10 @@ __syncthreads();
 
 		}
 
-		__syncthreads();
 	}
 
-__syncthreads();
 
 	for(;i < nQueen;++i){
-
-		__syncthreads();
 
 		if(deviceWorkSet.deviceVariableCollection[who].deviceVariable[level].domain[i] == 1){
 			__syncthreads();
@@ -291,29 +275,22 @@ __syncthreads();
 				--deviceWorkSet.deviceVariableCollection[who].deviceVariable[level].domain[threadIdx.x];
 			deviceWorkSet.deviceVariableCollection[who].deviceVariable[level].ground = i;
 			deviceWorkSet.deviceVariableCollection[who].lastValues[level] = i+1;
-__syncthreads();
 			break;
 		}
 
-		__syncthreads();
-
 	}
-__syncthreads();
 	
 	for(int i = sharedCount; i < sharedCount+nValues-1; ++i){
-__syncthreads();
 			deviceQueenPropagation.parallelForwardPropagation2(
 				deviceWorkSet.deviceVariableCollection[i],
 				level,
 				deviceWorkSet.deviceVariableCollection[i].deviceVariable[level].ground);
 			__syncthreads();
 	}
-__syncthreads();
 	deviceQueenPropagation.parallelForwardPropagation2(
 		deviceWorkSet.deviceVariableCollection[who],
 		level,
 		deviceWorkSet.deviceVariableCollection[who].deviceVariable[level].ground);
-__syncthreads();
 	return;
 
 }
@@ -330,12 +307,9 @@ __device__ int DeviceWorkSet::expand(int who, int& level, int& oldCount){
 		ErrorChecking::deviceError("Error::DeviceWorkSet::expand::LEVEL OUT OF BOUND");
 		return -1;
 	}
-__syncthreads();
 	__shared__ int nValues;
-__syncthreads();
 	nValues = 0;
 
-	__syncthreads();
 
 	if(threadIdx.x == 0){
 		for(int i = 0; i < nQueen; ++i){
@@ -345,10 +319,6 @@ __syncthreads();
 		}
 	}
 
-	/*if(threadIdx.x < nQueen && deviceVariableCollection[who].deviceVariable[level].domain[threadIdx.x] == 1){
-		atomicAdd(&nValues,1);
-	}*/
-
 	__syncthreads();
 
 	if(nValues <= 1)return 0;
@@ -356,8 +326,19 @@ __syncthreads();
 
 	__shared__ int t;
 
+	if(threadIdx.x == 0)
+		while(atomicCAS(&lockCount,0,1)==1){}
+
 	__syncthreads();
 
+	if(count + nValues-1 > nVariableCollection){
+		lockCount = 0;
+		ErrorChecking::deviceMessage("Warn::DeviceWorkSet::expand::NOT ENOUGH SPACE");
+		return -1;
+	}
+
+	lockCount = 0;
+	
 	if(threadIdx.x == 0){
 		t = atomicAdd(&count, nValues-1);
 	}
@@ -366,29 +347,13 @@ __syncthreads();
 	
 	oldCount = t;
 
-	__syncthreads();
-
-	if((nValues-1) + count > nVariableCollection){
-		ErrorChecking::deviceMessage("Warn::DeviceWorkSet::expand::NOT ENOUGH SPACE");
-		return -1;
-	}
-
-__syncthreads();
 
 	if(nValues == 0){
 		ErrorChecking::deviceMessage("Warn::DeviceWorkSet::expand::VARIABLE IS FAILED");
 		return 0;
 	}
 
-__syncthreads();
-
-
-
-__syncthreads();
-
 	externExpand(*this,who,t,level,nValues,nQueen);
-
-__syncthreads();
 
 	return nValues-1;
 }
@@ -416,16 +381,15 @@ __device__ int DeviceWorkSet::solve(int who, int outLevel, int& nodes, int count
 	__shared__ int nSols;
 	__shared__ bool done;
 
-	__syncthreads();
-
-
 	level = outLevel;
 	ltemp = outLevel-1;
 	levelUp = 1;
 	val = 0;
 	nSols = 0;
 	done = false;
-__syncthreads();
+
+	__syncthreads();
+
 	do{
 
 		__syncthreads();
@@ -445,54 +409,41 @@ __syncthreads();
 
 				val = deviceQueenPropagation.nextAssign(deviceVariableCollection[who],level);
 				
-__syncthreads();
 
 				if(val == -1){
-__syncthreads();
 
 					if(level <= ltemp+1){
-__syncthreads();		
 
 						done = true;
-__syncthreads();
 					}else{
-__syncthreads();
 
 						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
-__syncthreads();
 
 						if(threadIdx.x == 0){
 							level -= levelUp;
 							levelUp = 1;
 
 						}
-__syncthreads();
 
 					}
-__syncthreads();
 
 				}else{
 
-__syncthreads();
 					if(deviceQueenPropagation.parallelForwardPropagation2(deviceVariableCollection[who],level,val)){
 						__syncthreads();
 						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
-__syncthreads();
 
 						if(threadIdx.x == 0){
 							--level;
 						}
-__syncthreads();
 
 					}
 					__syncthreads();
 
 					if(threadIdx.x == 0)++level;
-__syncthreads();
 
 				}
 
-__syncthreads();
 			}else{
 				__syncthreads();
 
@@ -500,11 +451,8 @@ __syncthreads();
 					++level;
 					++levelUp;
 				}
-__syncthreads();
 			}
-__syncthreads();
 		}
-__syncthreads();
 		__syncthreads();
 
 		if(level == ltemp){
@@ -514,7 +462,6 @@ __syncthreads();
 		__syncthreads();
 	}while(!done);
 
-__syncthreads();
 	return nSols;
 }
 

@@ -47,12 +47,11 @@ __device__ DeviceParallelQueue deviceParallelQueue;
 __global__ void test(int level, int workIndex,int countPerBlock){
 
 	if(deviceWorkSet.deviceVariableCollection[workIndex].isFailed())return;
-__syncthreads();
+
 	if(deviceWorkSet.deviceVariableCollection[workIndex].isGround()){
 		if(threadIdx.x == 0){
 			atomicAdd(&solutions,1);
 		}
-__syncthreads();
 		return;
 	}
 
@@ -60,16 +59,14 @@ __syncthreads();
 
 	while(level < levelDiscriminant1){
 
-__syncthreads();
-
 			int nExpansion = 0;
 			int oldCount = 0;
-__syncthreads();
+
 			nExpansion = deviceWorkSet.expand(workIndex,level,oldCount);
 
 			__syncthreads();
 
-			if(threadIdx.x == 0){
+			if(threadIdx.x == 0 && nExpansion > 0){
 			 	deviceWorkSet.deviceVariableCollection[workIndex].lastValues[level] = nQueen+1;
 				for(int i = oldCount; i < oldCount + nExpansion; ++i){
 
@@ -81,25 +78,31 @@ __syncthreads();
 
 				}
 			}
-__syncthreads();
-			if(deviceWorkSet.deviceVariableCollection[workIndex].isFailed())return;
-__syncthreads();
-			if(deviceWorkSet.deviceVariableCollection[workIndex].isGround()){
-				if(threadIdx.x == 0){
-					atomicAdd(&solutions,1);
-				}
-__syncthreads();
-				return;
-			}
-__syncthreads();
-			++level;
 
 			__syncthreads();
+
+			if(nExpansion == -1){
+				int tSol = deviceWorkSet.solve(workIndex,level,nodes,countPerBlock,nodesPerBlock);
+				__syncthreads();
+				if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}	
+				return;
+			}else{
+				if(deviceWorkSet.deviceVariableCollection[workIndex].isFailed())return;
+				if(deviceWorkSet.deviceVariableCollection[workIndex].isGround()){
+					if(threadIdx.x == 0){
+						atomicAdd(&solutions,1);
+					}
+					__syncthreads();
+					return;
+				}
+			}
+
+		++level;
+
+		__syncthreads();
 			
 	}
-__syncthreads();
 	int tSol = deviceWorkSet.solve(workIndex,level,nodes,countPerBlock,nodesPerBlock);
-__syncthreads();
 	if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}
 
 	return;
