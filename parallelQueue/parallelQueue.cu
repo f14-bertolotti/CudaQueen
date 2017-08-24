@@ -205,22 +205,31 @@ __device__ int DeviceParallelQueue::add(DeviceVariableCollection& element, int l
 
 __device__ int DeviceParallelQueue::read(DeviceVariableCollection& element, int index){
 
-	int pos = -1;
-	for (int i = 0; i < maxUsed && i < size; ++i){
-		if(atomicCAS(&lockReading[i],2,3)==2){
-			pos = i;
-			break;
+	__shared__ int pos;
+	pos = -1;
+
+	__syncthreads();
+
+	if(threadIdx.x == 0){
+		for (int i = 0; i < maxUsed && i < size; ++i){
+			if(atomicCAS(&lockReading[i],2,3)==2){
+				pos = i;
+				break;
+			}
 		}
 	}
 
-	if(pos == -1)return -1;
-	element = deviceVariableCollection[pos];
+	__syncthreads();
 
-	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"SYNCH");
+	if(pos == -1)return -1;
+	
+	element = deviceVariableCollection[pos];
 
 	int ltemp = levelLeaved[pos];
 
-	lockReading[pos] = 0;
+	__syncthreads();
+
+	if(threadIdx.x == 0)lockReading[pos] = 0;
 
 	return ltemp;
 }
@@ -228,51 +237,28 @@ __device__ int DeviceParallelQueue::read(DeviceVariableCollection& element, int 
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-
-__global__ void externCopy(DeviceVariableCollection& toCopy, DeviceVariableCollection& in, int level){
-
-	int index = threadIdx.x + blockIdx.x * blockDim.x;
-	int nQueen = toCopy.nQueen;
-
-	if(index < nQueen*nQueen){
-		in.dMem[index] = toCopy.dMem[index];
-	}
-
-	if(index < toCopy.nQueen*nQueen){
-		in.deviceQueue.q[index] = toCopy.deviceQueue.q[index];
-		in.deviceQueue.q[nQueen*nQueen+index] = toCopy.deviceQueue.q[nQueen*nQueen+index];
-		in.deviceQueue.q[2*nQueen*nQueen+index] = toCopy.deviceQueue.q[2*nQueen*nQueen+index];
-	}
-
-	if(index < nQueen){
-		if(index != level)in.deviceVariable[index].ground = toCopy.deviceVariable[index].ground;
-		in.deviceVariable[index].failed = toCopy.deviceVariable[index].failed;
-		in.deviceVariable[index].changed = toCopy.deviceVariable[index].changed;
-		in.deviceVariable[index].domainSize = toCopy.deviceVariable[index].domainSize;	
-		in.lastValues[index] = toCopy.lastValues[index];
-	}
-
-	if(index == 1){
-		in.deviceQueue.count = toCopy.deviceQueue.count;
-		in.lastValues[level] = nQueen;
-	}
-
-}
-
-__global__ void end(int* lock){
-	*lock = 2;
-}
-
 __device__ int DeviceParallelQueue::expansion(DeviceVariableCollection& element, int level){
 
 
+	if(level > nQueen || level < 0){
+		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceParallelQueue::expansion::LEVEL OUT OF BOUND");
+		return -1;
+	}
+
+
 	DeviceQueenPropagation deviceQueenPropagation;
-	if(nQueen > 100) return -1;
-	int first = -1;
-	int nValues = 0;
-	int positions[100];
-	int values[100];
-	bool ok = false;
+	if(nQueen > 20) return -1;
+	__shared__ int first;
+	__shared__ int nValues;
+	__shared__ int positions[20];
+	__shared__ int values[20];
+	__shared__ bool ok;
+
+	nValues = 0;
+	first = -1;
+	ok = false;
+
+__syncthreads();
 
 	for(int val = 0; val < nQueen; ++val){
 
@@ -280,81 +266,93 @@ __device__ int DeviceParallelQueue::expansion(DeviceVariableCollection& element,
 
 			ok = false;
 
-			for (int i = 0; i < size; ++i){
+			__syncthreads();
 
-				if(atomicCAS(&lockReading[i],0,1)==0){
+			if(threadIdx.x == 0){
 
-					positions[nValues] = i;
-					values[nValues] = val;
-					ok = true;
-					++nValues;
-					break;
+				for (int i = 0; i < size; ++i){
+
+					if(atomicCAS(&lockReading[i],0,1)==0){
+
+						positions[nValues] = i;
+						values[nValues] = val;
+						//printf("adding %d\n", positions[nValues]);
+						ok = true;
+						++nValues;
+						break;
+
+					}
 
 				}
-
+				
 			}
+
+			__syncthreads();
 
 			if(!ok){
-
+				//non sono riuscito a occupare per tutto il livello, tolgo i lock
+				if(threadIdx.x == 0){
+					for(int i = 0; i < nValues; ++i){
+						lockReading[positions[i]] = 0;
+					}
+				}
 				return -1;
-
 			}
+
 		}else if(element.deviceVariable[level].domain[val] == 1 && first == -1){
-
+			__syncthreads();
 			first = val;
-
 		}
 	}
+
+	__syncthreads();
 
 
 	for(int i = 0; i < nValues; ++i){
 
 		deviceVariableCollection[positions[i]].deviceVariable[level].ground = values[i];
 
-		while(atomicCAS(&lockMaxUsed,0,1)==1){}
-		if(positions[i] >= maxUsed)maxUsed = positions[i]+1;
-		lockMaxUsed = 0;
+		if(threadIdx.x == 0)atomicMax(&maxUsed, positions[i]+1);
 
 		levelLeaved[positions[i]] = level+1;
 
-		cudaStream_t s;
-		ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceParallelQueue::expansion");
+		deviceVariableCollection[positions[i]] = element;
+		
+		deviceVariableCollection[positions[i]].lastValues[level] = nQueen;
 
-		externCopy<<<1,nQueen*nQueen,0,s>>>(element,deviceVariableCollection[positions[i]],level);
-		externAssignParallel(
-							deviceVariableCollection[positions[i]].deviceVariable[level].domain, 
-							deviceVariableCollection[positions[i]].deviceVariable[level].domainSize, values[i]
-							);
+
+		if(threadIdx.x < nQueen && threadIdx.x != values[i]){
+			--deviceVariableCollection[positions[i]].deviceVariable[level].domain[threadIdx.x];
+		}
+
 		deviceVariableCollection[positions[i]].deviceVariable[level].ground = values[i];
-		deviceQueenPropagation.parallelForwardPropagation2(deviceVariableCollection[positions[i]],level,values[i],s);
-		end<<<1,1,0,s>>>(&lockReading[positions[i]]);
-		ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceParallelQueue::EXPANDED");
-		ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceParallelQueue::expansion::STREAM DESTRUCTION");
 
+		__syncthreads();
+
+		deviceQueenPropagation.parallelForwardPropagation2(deviceVariableCollection[positions[i]],level,values[i]);
+
+		__syncthreads();
+
+		if(threadIdx.x == 0)lockReading[positions[i]] = 2;
 
 	}
 
+	__syncthreads();
 
 	int val = first;
 
 	element.lastValues[level] = nQueen;
 	element.deviceVariable[level].ground = val;
 
-	cudaStream_t s;
-	ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceParallelQueue::expansion");
+	if(threadIdx.x < nQueen && threadIdx.x != val){
+		--element.deviceVariable[level].domain[threadIdx.x];
+	}
 
-	externAssignParallel(
-						element.deviceVariable[level].domain, 
-						element.deviceVariable[level].domainSize, val
-						);
-	deviceQueenPropagation.parallelForwardPropagation2(element,level,val,s);
-	ErrorChecking::deviceErrorCheck(cudaPeekAtLastError(),"DeviceParallelQueue::EXPANDED");
-	ErrorChecking::deviceErrorCheck(cudaStreamDestroy(s),"DeviceParallelQueue::expansion::STREAM DESTRUCTION");
+	__syncthreads();
 
-	ErrorChecking::deviceErrorCheck(cudaDeviceSynchronize(),"DeviceParallelQueue::SYNCH");
+	deviceQueenPropagation.parallelForwardPropagation2(element,level,val);
 
 	return nValues+1;
-
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////

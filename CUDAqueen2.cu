@@ -16,7 +16,7 @@ __device__ int maxBlock = 10000;
 __device__ int maxQueue = 10000;
 __device__ int nodes = 1;
 __device__ int levelDiscriminant1 = 4;
-__device__ int levelDiscriminant2 = 10;
+__device__ int levelDiscriminant2 = 7;
 __device__ bool fileprint = false;
 
 __device__ int nodesPerBlock[100000];
@@ -46,64 +46,115 @@ __device__ DeviceParallelQueue deviceParallelQueue;
 
 __global__ void test(int level, int workIndex,int countPerBlock){
 
-	if(deviceWorkSet.deviceVariableCollection[workIndex].isFailed())return;
+	__shared__ bool done;
+
+	done = false;
+
+	__syncthreads();
+
+	if(deviceWorkSet.deviceVariableCollection[workIndex].isFailed())done = true;
 
 	if(deviceWorkSet.deviceVariableCollection[workIndex].isGround()){
 		if(threadIdx.x == 0){
 			atomicAdd(&solutions,1);
 		}
-		return;
+		done = true;
 	}
 
 	__syncthreads();
 
-	while(level < levelDiscriminant1){
+	while(!done){
+		if(level < levelDiscriminant1){
 
 			int nExpansion = 0;
 			int oldCount = 0;
 
 			nExpansion = deviceWorkSet.expand(workIndex,level,oldCount);
-
+			if(threadIdx.x == 0)atomicAdd(&nodes,nExpansion+1);
 			__syncthreads();
+			if(nExpansion > 0){
+				if(threadIdx.x == 0){
+				 	deviceWorkSet.deviceVariableCollection[workIndex].lastValues[level] = nQueen+1;
+					for(int i = oldCount; i < oldCount + nExpansion; ++i){
 
-			if(threadIdx.x == 0 && nExpansion > 0){
-			 	deviceWorkSet.deviceVariableCollection[workIndex].lastValues[level] = nQueen+1;
-				for(int i = oldCount; i < oldCount + nExpansion; ++i){
+					  	cudaStream_t s;
+					 	cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
+					 	deviceWorkSet.deviceVariableCollection[i].lastValues[level] = nQueen+1;
+						test<<<1,1024,0,s>>>(level+1,i,atomicAdd(&nodesPerBlockCount,1));
+						cudaStreamDestroy(s);
 
-				  	cudaStream_t s;
-				 	cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
-				 	deviceWorkSet.deviceVariableCollection[i].lastValues[level] = nQueen+1;
-					test<<<1,1024,0,s>>>(level+1,i,atomicAdd(&nodesPerBlockCount,1));
-					cudaStreamDestroy(s);
-
+					}
 				}
-			}
 
-			__syncthreads();
-
-			if(nExpansion == -1){
-				int tSol = deviceWorkSet.solve(workIndex,level,nodes,countPerBlock,nodesPerBlock);
 				__syncthreads();
-				if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}	
-				return;
-			}else{
-				if(deviceWorkSet.deviceVariableCollection[workIndex].isFailed())return;
-				if(deviceWorkSet.deviceVariableCollection[workIndex].isGround()){
+
+				if(deviceWorkSet.deviceVariableCollection[workIndex].isFailed())done = true;
+				else if(deviceWorkSet.deviceVariableCollection[workIndex].isGround()){
 					if(threadIdx.x == 0){
 						atomicAdd(&solutions,1);
 					}
 					__syncthreads();
-					return;
+					done = true;
 				}
-			}
 
-		++level;
+				++level;
+
+			}else if(nExpansion == -1){
+
+				__syncthreads();
+
+				if(maxQueue > 0){
+					int tSol = deviceWorkSet.solveAndAdd(workIndex,level,nodes,countPerBlock,nodesPerBlock,levelDiscriminant2,deviceParallelQueue);
+					if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}	
+				}else{
+					int tSol = deviceWorkSet.solve(workIndex,level,nodes,nodesPerBlockCount,nodesPerBlock);
+					if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}	
+				}
+
+				done = true;
+			}
+				
+		}else if(level >= levelDiscriminant1 && level < levelDiscriminant2){
+
+			if(maxQueue > 0){
+				int tSol = deviceWorkSet.solveAndAdd(workIndex,level,nodes,countPerBlock,nodesPerBlock,levelDiscriminant2,deviceParallelQueue);
+				if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}	
+			}else{
+				int tSol = deviceWorkSet.solve(workIndex,level,nodes,nodesPerBlockCount,nodesPerBlock);
+				if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}	
+			}				
+
+			done = true;
+
+		}else{
+			int tSol = deviceWorkSet.solve(workIndex,level,nodes,nodesPerBlockCount,nodesPerBlock);
+			if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}
+			done = true;
+		}
 
 		__syncthreads();
-			
+
 	}
-	int tSol = deviceWorkSet.solve(workIndex,level,nodes,countPerBlock,nodesPerBlock);
-	if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}
+	
+	if(maxQueue > 0){
+		int ll = 0;
+		do{
+			ll = deviceParallelQueue.read(deviceWorkSet.deviceVariableCollection[workIndex],workIndex);
+			if(ll!=-1 && ll >= levelDiscriminant2){
+				int tSol = deviceWorkSet.solve(workIndex,ll,nodes,nodesPerBlockCount,nodesPerBlock);
+				if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}
+			}else if(ll!=-1 && ll < levelDiscriminant2){
+				if(maxQueue > 0){
+					int tSol = deviceWorkSet.solveAndAdd(workIndex,ll,nodes,countPerBlock,nodesPerBlock,levelDiscriminant2,deviceParallelQueue);
+					if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}	
+				}else{
+					int tSol = deviceWorkSet.solve(workIndex,ll,nodes,nodesPerBlockCount,nodesPerBlock);
+					if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}	
+				}				
+			}
+			__syncthreads();
+		}while(ll != -1);
+	}
 
 	return;
 }
@@ -120,7 +171,7 @@ __global__ void initParallelQueue(DeviceVariableCollection*,
 
 __global__ void results();
 
-__global__ void init(int,int,int,int,int,bool,bool);
+__global__ void initDevice(int,int,int,int,int,bool,bool);
 
 void init(int argc, char **argv);
 
@@ -174,6 +225,9 @@ int main(int argc, char **argv){
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&elapsedTime, start, stop);
+
+	cudaDeviceSynchronize();
+
 
 	results<<<1,1>>>();
 
@@ -297,20 +351,22 @@ void init(int argc, char **argv){
 		printf("level discriminant 2 = %d\n", host_levelDiscriminant2);
 		printf("file print           = %s\n", host_fileprint ? "true" : "false");
 		printf("-------------------------\n");
-	}else
+	}
 
-	init<<<1,1>>>(host_nQueen,host_maxBlock,host_maxQueue,host_levelDiscriminant1,host_levelDiscriminant2,host_fileprint,host_activeNodesPerBlockCount);
+	initDevice<<<1,1>>>(host_nQueen,host_maxBlock,host_maxQueue,host_levelDiscriminant1,host_levelDiscriminant2,host_fileprint,host_activeNodesPerBlockCount);
+
 	cudaDeviceSynchronize();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-__global__ void init(int n,int b,int q,int l,int k,bool f,bool o){
+__global__ void initDevice(int n,int b,int q,int l,int k,bool f,bool o){
 	nQueen = n;
 	maxBlock = b;
 	maxQueue = q;
 	levelDiscriminant1 = l;
 	levelDiscriminant2 = k;
+
 	fileprint = f;
 	activeNodesPerBlockCount = o;
 }
