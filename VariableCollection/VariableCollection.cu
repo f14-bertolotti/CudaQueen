@@ -99,13 +99,13 @@ __device__ void DeviceVariableCollection::init(DeviceVariable* dv,Triple* q, int
 	lastValues = lv;
 	deviceQueue.init(q,nq);
 
-	for(int i = 0; i < nQueen*nQueen; ++i){
-		vm[i] = 1;
+	if(threadIdx.x < nQueen*nQueen){
+		vm[threadIdx.x] = 1;
 	}
 
-	for (int i = 0; i < nQueen; ++i){
-		deviceVariable[i].init2(&vm[nQueen*i],nQueen);
-		lastValues[i]=0;
+	if(threadIdx.x < nQueen){
+		deviceVariable[threadIdx.x].init2(&vm[nQueen*threadIdx.x],nQueen);
+		lastValues[threadIdx.x]=0;
 	}
 
 }

@@ -392,6 +392,21 @@ __device__ int DeviceWorkSet::solve(int who, int outLevel, int& nodes, int count
 		return -1;
 	}
 
+	extern __shared__ double sharedMem[];	
+
+	__shared__ DeviceVariableCollection sharedCollection;
+	sharedCollection.init(	(DeviceVariable*)&sharedMem[0],
+							(Triple*)&sharedMem[int(nQueen*sizeof(DeviceVariable)/sizeof(double))+1],
+							(int*)&sharedMem[int(nQueen*sizeof(DeviceVariable)/sizeof(double))+1+int(nQueen*nQueen*3*sizeof(Triple)/sizeof(double))+1],
+							(int*)&sharedMem[int(nQueen*sizeof(DeviceVariable)/sizeof(double))+1+int(nQueen*nQueen*3*sizeof(Triple)/sizeof(double))+1+int(nQueen*nQueen*sizeof(int)/sizeof(double))+1],nQueen);
+
+	__syncthreads();
+
+
+	sharedCollection = deviceVariableCollection[who];
+
+	__syncthreads();
+
 	__shared__ int level;
 	__shared__ int ltemp;
 	__shared__ int levelUp;
@@ -406,9 +421,9 @@ __device__ int DeviceWorkSet::solve(int who, int outLevel, int& nodes, int count
 	nSols = 0;
 	done = false;
 
-	if(deviceVariableCollection[who].isFailed()){
+	if(sharedCollection.isFailed()){
 		return 0;
-	}else if(deviceVariableCollection[who].isGround()){
+	}else if(sharedCollection.isGround()){
 		return 1;
 	}
 
@@ -417,10 +432,10 @@ __device__ int DeviceWorkSet::solve(int who, int outLevel, int& nodes, int count
 	do{
 
 		__syncthreads();
-		if(deviceVariableCollection[who].isGround()){
+		if(sharedCollection.isGround()){
 			if(threadIdx.x == 0)++nSols;
 			__syncthreads();
-			deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
+			deviceQueenPropagation.parallelUndoForwardPropagation(sharedCollection);
 			if(threadIdx.x == 0){
 				--level;
 			}	
@@ -428,10 +443,10 @@ __device__ int DeviceWorkSet::solve(int who, int outLevel, int& nodes, int count
 		}else{
 			__syncthreads();
 
-			if(deviceVariableCollection[who].deviceVariable[level].ground < 0){
+			if(sharedCollection.deviceVariable[level].ground < 0){
 				__syncthreads();
 
-				val = deviceQueenPropagation.nextAssign(deviceVariableCollection[who],level);
+				val = deviceQueenPropagation.nextAssign(sharedCollection,level);
 				
 
 				if(val == -1){
@@ -441,7 +456,7 @@ __device__ int DeviceWorkSet::solve(int who, int outLevel, int& nodes, int count
 						done = true;
 					}else{
 
-						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
+						deviceQueenPropagation.parallelUndoForwardPropagation(sharedCollection);
 
 						if(threadIdx.x == 0){
 							level -= levelUp;
@@ -458,9 +473,9 @@ __device__ int DeviceWorkSet::solve(int who, int outLevel, int& nodes, int count
 						++nodesPerBlock[count];
 					}
 
-					if(deviceQueenPropagation.parallelForwardPropagation2(deviceVariableCollection[who],level,val)){
+					if(deviceQueenPropagation.parallelForwardPropagation2(sharedCollection,level,val)){
 						__syncthreads();
-						deviceQueenPropagation.parallelUndoForwardPropagation(deviceVariableCollection[who]);
+						deviceQueenPropagation.parallelUndoForwardPropagation(sharedCollection);
 
 						if(threadIdx.x == 0){
 							--level;

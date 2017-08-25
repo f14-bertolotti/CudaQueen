@@ -7,7 +7,7 @@
 for((i=0;i<=13;i++)); do
 	for((j=0;j<i;j++)); do
 		for((k=j+1;k<i;k++)); do
-			./RCUDA2 -n $i -l $j -k $k -q 5000 -b 10000 -f >> /home/the14th/Dropbox/out;
+			./RCUDA2 -n $i -l $j -k $k -q 60000 -b 60000 -f >> /home/the14th/Dropbox/outWQ;
 			echo "queens $i level1 $j level2 $k"
 		done;
 	done;
@@ -17,10 +17,10 @@ done;
 
 for((i=0;i<=13;i++)); do
 	for((j=0;j<i;j++)); do
-		for((k=j+1;k<i;k++)); do
-			./RCUDA2 -n $i -l $j -k $k -q 0 -b 10000 -f >> /home/the14th/Dropbox/out;
-			echo "queens $i level1 $j level2 $k"
-		done;
+
+		./RCUDA2 -n $i -l $j -k 0 -q 0 -b 60000 -f >> /home/the14th/Dropbox/outNQ;
+		echo "queens $i level1 $j level2 0"
+
 	done;
 done;
 

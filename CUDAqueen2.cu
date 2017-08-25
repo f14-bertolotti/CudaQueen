@@ -80,7 +80,13 @@ __global__ void test(int level, int workIndex,int countPerBlock){
 					  	cudaStream_t s;
 					 	cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
 					 	deviceWorkSet.deviceVariableCollection[i].lastValues[level] = nQueen+1;
-						test<<<1,1024,0,s>>>(level+1,i,atomicAdd(&nodesPerBlockCount,1));
+						test<<<1,1024,	 sizeof(DeviceVariable)*nQueen
+										+sizeof(Triple)*nQueen*nQueen*3
+										+sizeof(int)*nQueen*nQueen
+										+sizeof(int)*nQueen
+										+sizeof(double)*10,
+										s>>>(level+1,i,atomicAdd(&nodesPerBlockCount,1));
+
 						cudaStreamDestroy(s);
 
 					}
@@ -209,9 +215,8 @@ int main(int argc, char **argv){
 				  			   hostParallelQueue.nQueen,
 				 			   hostParallelQueue.size);
 
-
-
 	cudaDeviceSynchronize();
+
 
     cudaEvent_t     start, stop;
     cudaEventCreate( &start );
@@ -219,7 +224,12 @@ int main(int argc, char **argv){
 	float   elapsedTime;
 	cudaEventRecord( start, 0 );
 
-	test<<<1,1024>>>(0,0,0);					
+	test<<<1,1024,	 sizeof(DeviceVariable)*host_nQueen
+					+sizeof(Triple)*host_nQueen*host_nQueen*3
+					+sizeof(int)*host_nQueen*host_nQueen
+					+sizeof(int)*host_nQueen
+					+sizeof(double)*10
+					>>>(0,0,0);
 
 
 	cudaEventRecord(stop, 0);
