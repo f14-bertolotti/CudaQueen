@@ -1,0 +1,29 @@
+
+il ruolo fondamentale della coda è di lasciare un margine di lavoro nel caso probabile un 
+blocco finisca prima degli altri in modo tale da mantere un alto numero di blocchi occupati
+fino alla fine, allontando il rischio che rimangano solo una manciata di blocchi con migliaia 
+di stati da esplorare l'uno mentre tutti gli altri concludono la loro porzione iniziale di
+lavoro dopo poche iterazioni.
+
+quindi vogliamo vedere come variano le durate dei singoli kernel a senconda che si utilizzi
+o meno la coda.
+
+indichiamo varianza e media delle durate
+			with q 			withouth q
+media		124				122
+varianza	280				707
+
+sembra quindi che la coda riesca ad avere un impatto effettivo sulla varianza
+dei singoli kernel, andando ad uniformare i tempi di esecuzione, nonostante i singoli
+blocchi inizino l'esecuzione in tempi differenti.
+
+cerchiamo di capire se l'effetto della coda è il medesimo anche per il numero
+di stati esplorati da ogni singolo blocco
+
+			with q 			withouth q
+media		310				310
+varianza 	26242			4699			
+somma		233442			233442
+
+in questo caso si ha un comportamento differente in cui l'utilizzo della coda porta alcuni dei
+blocchi ad esplorare molti più stati di altri.

@@ -1,0 +1,25 @@
+Sull'asse delle y abbiamo i tempi di esecuzione
+
+Sull'asse delle x abbiamo i due discriminanti
+
+i discriminanti vanno a determinare quali nodi devono essere inseriti in coda e quali invece devono essere risolti immediatamente,
+nei grafici è mostrato come variano i tempi di esecuzione a seconda che si utilizzi o meno la coda per la risoluzione del csp.
+
+I dati sono stati ottenuti facendo la media su 5 campioni ottenuti facendo variare i due discriminanti, che assumono tutti i valori
+possibili per scacchiere 8x8, 10x10, 12x12.
+
+Anche in questa nuova versione la coda non sembra andare influire troppo negativamente sulle prestazioni e in alcuni
+casi rappresenta anche uno strumento utile per distrubuire il carico di lavoro e andare a ridurre effettivamente i tempi
+di esecuzione.
+
+Come si può notare dai grafici la coda ha un comportamento migliore quando viene utilizzata in modo equilibrato, non ci devono essere
+un numero eccessivo di copie altrimenti il lavoro tra i thread è si bilanciato ma si ha comunque un overhead dovuto
+agli eccessivi accessi in memoria, ma non devono nemmeno essere usato un numero eccessivamente basso di nodi altrimenti non si va
+ad avere una buona quantità di lavoro da distribuire ai blocchi man mano che terminano la porzione di lavoro iniziale.
+
+E' possibile notare anche un comportamento bizzaro, nelle prime esecuzioni di 8 regine, 
+quando il primo discriminante è 0 viene lanciato solamente un blocco per risolvere il csp, in questo caso la coda va a determinare
+un abbassamento delle prestazioni, nonostante non possa avere un effetto sul bilanciamento visto che in esecuzione c'è un solo blocco.
+La causa potrebbe essere che gli accessi nell'utilizzo di una solo matrice sono troppo concentrati in memoria e causano
+una degradazione delle prestazioni, tuttavia il divario è estremamente basso ~30 millisecondi ¿¿¿¿ .
+

@@ -1,0 +1,11 @@
+
+i risultati sono stati ottenuti facendo variarie i parametri dei due discriminanti unitamente al numero
+massimo di blocchi utilizzabile.
+
+anche se il massimo numero di blocchi utilizzabile non è detto che il programma riesca ad utilizzarli tutti,
+ tuttavia il calcolo dell'efficienza è fatto basandosi sul rapporto dei blocchi utilizzati, 
+ questo per far notare che il parametro utilizzato ha un valore indicati
+
+ non solo ma sarà comune vedere l'efficienza superare il valore di uno, che normalmente sarebbe possibile,
+ ma i test fatti tengono conto della coda che può anche avere un'effetto considerevole sulla velocità di
+ esecuzione senza tuttavia richiedere

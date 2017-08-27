@@ -71,6 +71,7 @@ __global__ void test(int level, int workIndex,int countPerBlock){
 
 			nExpansion = deviceWorkSet.expand(workIndex,level,oldCount);
 			if(threadIdx.x == 0)atomicAdd(&nodes,nExpansion+1);
+			if(threadIdx.x == 0)nodesPerBlock[countPerBlock]+=nExpansion+1;
 			__syncthreads();
 			if(nExpansion > 0){
 				if(threadIdx.x == 0){
@@ -113,7 +114,7 @@ __global__ void test(int level, int workIndex,int countPerBlock){
 					int tSol = deviceWorkSet.solveAndAdd(workIndex,level,nodes,countPerBlock,nodesPerBlock,levelDiscriminant2,deviceParallelQueue);
 					if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}	
 				}else{
-					int tSol = deviceWorkSet.solve(workIndex,level,nodes,nodesPerBlockCount,nodesPerBlock);
+					int tSol = deviceWorkSet.solve(workIndex,level,nodes,countPerBlock,nodesPerBlock);
 					if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}	
 				}
 
@@ -126,14 +127,14 @@ __global__ void test(int level, int workIndex,int countPerBlock){
 				int tSol = deviceWorkSet.solveAndAdd(workIndex,level,nodes,countPerBlock,nodesPerBlock,levelDiscriminant2,deviceParallelQueue);
 				if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}	
 			}else{
-				int tSol = deviceWorkSet.solve(workIndex,level,nodes,nodesPerBlockCount,nodesPerBlock);
+				int tSol = deviceWorkSet.solve(workIndex,level,nodes,countPerBlock,nodesPerBlock);
 				if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}	
 			}				
 
 			done = true;
 
 		}else{
-			int tSol = deviceWorkSet.solve(workIndex,level,nodes,nodesPerBlockCount,nodesPerBlock);
+			int tSol = deviceWorkSet.solve(workIndex,level,nodes,countPerBlock,nodesPerBlock);
 			if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}
 			done = true;
 		}
@@ -147,14 +148,14 @@ __global__ void test(int level, int workIndex,int countPerBlock){
 		do{
 			ll = deviceParallelQueue.read(deviceWorkSet.deviceVariableCollection[workIndex],workIndex);
 			if(ll!=-1 && ll >= levelDiscriminant2){
-				int tSol = deviceWorkSet.solve(workIndex,ll,nodes,nodesPerBlockCount,nodesPerBlock);
+				int tSol = deviceWorkSet.solve(workIndex,ll,nodes,countPerBlock,nodesPerBlock);
 				if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}
 			}else if(ll!=-1 && ll < levelDiscriminant2){
 				if(maxQueue > 0){
 					int tSol = deviceWorkSet.solveAndAdd(workIndex,ll,nodes,countPerBlock,nodesPerBlock,levelDiscriminant2,deviceParallelQueue);
 					if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}	
 				}else{
-					int tSol = deviceWorkSet.solve(workIndex,ll,nodes,nodesPerBlockCount,nodesPerBlock);
+					int tSol = deviceWorkSet.solve(workIndex,ll,nodes,countPerBlock,nodesPerBlock);
 					if(threadIdx.x == 0){atomicAdd(&solutions,tSol);}	
 				}				
 			}
@@ -273,7 +274,7 @@ __global__ void results(){
 	}
 	if(activeNodesPerBlockCount){
 		printf("\n");
-		for(int i = 0; i < nodesPerBlockCount; ++i){
+		for(int i = 0; i <= nodesPerBlockCount; ++i){
 			printf("%d %d\n", i,nodesPerBlock[i]);
 		}
 	}
