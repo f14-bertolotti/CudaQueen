@@ -28,7 +28,7 @@ struct DeviceQueenPropagation{
 
 __device__ int inline DeviceQueenPropagation::nextAssign(DeviceVariableCollection& vc, int var){
 
-	if(var < 0 || var >= vc.nQueen){
+/*	if(var < 0 || var >= vc.nQueen){
 		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceQueenPropagation::nextAssign::VAR OUT OF BOUND");
 		return -1;
 	}
@@ -41,7 +41,7 @@ __device__ int inline DeviceQueenPropagation::nextAssign(DeviceVariableCollectio
 	if(vc.deviceVariable[var].failed == 1){
 		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceQueenPropagation::nextAssign::VAR ALREADY FAILED");
 		return -1;
-	}
+	}*/
 
 	__shared__ int nextAss;
 	nextAss = -1;
@@ -73,7 +73,7 @@ __device__ int inline DeviceQueenPropagation::nextAssign(DeviceVariableCollectio
 
 	}
 
-	if(threadIdx.x == 0)ErrorChecking::deviceMessage("Warn::DeviceQueenPropagation::nextAssign::NEXTVALUE NOT FOUND");
+	//if(threadIdx.x == 0)ErrorChecking::deviceMessage("Warn::DeviceQueenPropagation::nextAssign::NEXTVALUE NOT FOUND");
 
 
 	return nextAss;
@@ -84,7 +84,7 @@ __device__ int inline DeviceQueenPropagation::nextAssign(DeviceVariableCollectio
 
 __device__ int inline DeviceQueenPropagation::allDifferent(DeviceVariableCollection& vc, int var, int val, int delta){
 
-	if(var < 0 || var > vc.nQueen || val < 0 || val > vc.nQueen){
+/*	if(var < 0 || var > vc.nQueen || val < 0 || val > vc.nQueen){
 		ErrorChecking::deviceError("Error::DeviceQueenPropagation::allDifferent::OUT OF BOUND");
 		return -1;
 	}
@@ -92,7 +92,7 @@ __device__ int inline DeviceQueenPropagation::allDifferent(DeviceVariableCollect
 	if(vc.deviceVariable[var].ground != val){
 		ErrorChecking::deviceError("Error::QueenPropagation::allDifferent::VARIABLE NOT GROUND");
 		return -1;
-	}
+	}*/
 	
 	for(int i = 0; i < vc.nQueen; ++i)
 		if(i != var){
@@ -110,7 +110,7 @@ __device__ int inline DeviceQueenPropagation::allDifferent(DeviceVariableCollect
 
 __device__ int inline DeviceQueenPropagation::diagDifferent(DeviceVariableCollection& vc, int var, int val, int delta){
 
-	if(var < 0 || var > vc.nQueen || val < 0 || val > vc.nQueen){
+/*	if(var < 0 || var > vc.nQueen || val < 0 || val > vc.nQueen){
 		ErrorChecking::deviceError("Error::DeviceQueenPropagation::diagDifferent::OUT OF BOUND");
 		return -1;
 	}
@@ -118,7 +118,7 @@ __device__ int inline DeviceQueenPropagation::diagDifferent(DeviceVariableCollec
 	if(vc.deviceVariable[var].ground != val){
 		ErrorChecking::deviceError("Error::DeviceQueenPropagation::diagDifferent::VARIABLE NOT GROUND");
 		return -1;
-	}
+	}*/
 
 	int i=var+1,j=val+1;
 	while(i<vc.nQueen && j<vc.nQueen){
@@ -153,7 +153,7 @@ __device__ int inline DeviceQueenPropagation::diagDifferent(DeviceVariableCollec
 
 __device__ int inline DeviceQueenPropagation::forwardPropagation(DeviceVariableCollection& vc, int var, int val){
 
-	if(var < 0 || var > vc.nQueen){
+/*	if(var < 0 || var > vc.nQueen){
 		ErrorChecking::deviceError("Error::DeviceQueenPropagation::forwardPropagation:: VAR OUT OF BOUND");
 		return -1;
 	}
@@ -166,7 +166,7 @@ __device__ int inline DeviceQueenPropagation::forwardPropagation(DeviceVariableC
 	if(vc.deviceVariable[var].ground != val){
 		ErrorChecking::deviceError("Error::DeviceQueenPropagation::forwardPropagation::VARIABLE NOT GROUND");
 		return -1;
-	}
+	}*/
 
 	allDifferent(vc,var,val,-1);
 	diagDifferent(vc,var,val,-1);
@@ -198,7 +198,7 @@ __device__ int inline DeviceQueenPropagation::forwardPropagation(DeviceVariableC
 
 __device__ int inline DeviceQueenPropagation::undoForwardPropagation(DeviceVariableCollection& vc){
 
-	if(vc.deviceQueue.front()->cs!=5){
+/*	if(vc.deviceQueue.front()->cs!=5){
 		ErrorChecking::deviceError("Error::DeviceQueenPropagation::undoForwardPropagation::ERROR IN QUEUE");
 		return -1;		
 	}
@@ -206,7 +206,7 @@ __device__ int inline DeviceQueenPropagation::undoForwardPropagation(DeviceVaria
 	if(vc.deviceQueue.empty()){
 		ErrorChecking::deviceError("Error::DeviceQueenPropagation::undoForwardPropagation::EMPTY QUEUE");
 		return -1;		
-	}
+	}*/
 
 	int t1=vc.deviceQueue.front()->var;
 	int t2=vc.deviceQueue.front()->val;
@@ -240,9 +240,7 @@ __device__ int inline DeviceQueenPropagation::undoForwardPropagation(DeviceVaria
 
 __device__ int DeviceQueenPropagation::parallelForwardPropagation2(DeviceVariableCollection& vc, int var, int val){
 
-	__syncthreads();
-
-	if(var < 0 || var > vc.nQueen){
+/*	if(var < 0 || var > vc.nQueen){
 		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation::VAR OUT OF BOUND");
 		return -1;
 	}
@@ -257,7 +255,7 @@ __device__ int DeviceQueenPropagation::parallelForwardPropagation2(DeviceVariabl
 		return -1;
 	}
 
-	__syncthreads();
+	__syncthreads();*/
 
 	{
 		int columnIndex = int((threadIdx.x % (vc.nQueen * vc.nQueen))%vc.nQueen);
@@ -405,7 +403,7 @@ __device__ int DeviceQueenPropagation::parallelForwardPropagation2(DeviceVariabl
 
 
 
-	if(var < 0 || var > vc.nQueen){
+/*	if(var < 0 || var > vc.nQueen){
 		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation::VAR OUT OF BOUND");
 		return -1;
 	}
@@ -418,7 +416,7 @@ __device__ int DeviceQueenPropagation::parallelForwardPropagation2(DeviceVariabl
 	if(vc.deviceVariable[var].ground != val){
 		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation::VARIABLE NOT GROUND");
 		return -1;
-	}
+	}*/
 
 
 	vc.deviceQueue.add(var,val,5);
@@ -453,7 +451,7 @@ __global__ void externPropagation2(DeviceVariableCollection& vc, int var, int va
 
 __device__ int inline DeviceQueenPropagation::parallelUndoForwardPropagation(DeviceVariableCollection& vc){
 
-	if(vc.deviceQueue.front()->cs!=5){
+/*	if(vc.deviceQueue.front()->cs!=5){
 		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelUndoForwardPropagation::ERROR IN QUEUE");
 		return -1;		
 	}
@@ -461,7 +459,7 @@ __device__ int inline DeviceQueenPropagation::parallelUndoForwardPropagation(Dev
 	if(vc.deviceQueue.empty()){
 		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelUndoForwardPropagation::EMPTY QUEUE");
 		return -1;		
-	}
+	}*/
 
 	__shared__ int t1;
 	__shared__ int t2;

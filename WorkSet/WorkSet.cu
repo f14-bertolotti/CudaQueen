@@ -300,7 +300,7 @@ __device__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, i
 
 __device__ int DeviceWorkSet::expand(int who, int& level, int& oldCount){
 
-	if(who < 0 || who >= count){
+/*	if(who < 0 || who >= count){
 		ErrorChecking::deviceError("Error::DeviceWorkSet::expand::VARIABLE COLLECTION INDEX OUT OF BOUND");
 		return -1;
 	}
@@ -308,7 +308,7 @@ __device__ int DeviceWorkSet::expand(int who, int& level, int& oldCount){
 	if(level < 0 || level > nQueen){
 		ErrorChecking::deviceError("Error::DeviceWorkSet::expand::LEVEL OUT OF BOUND");
 		return -1;
-	}
+	}*/
 	__shared__ int nValues;
 	nValues = 0;
 
@@ -352,10 +352,10 @@ __device__ int DeviceWorkSet::expand(int who, int& level, int& oldCount){
 
 	__syncthreads();
 
-	if(nValues == 0){
+/*	if(nValues == 0){
 		ErrorChecking::deviceMessage("Warn::DeviceWorkSet::expand::VARIABLE IS FAILED");
 		return 0;
-	}
+	}*/
 
 	__syncthreads();
 
@@ -382,7 +382,7 @@ __device__ void DeviceWorkSet::print(){
 
 __device__ int DeviceWorkSet::solve(int who, int outLevel, int& nodes, int count, int* nodesPerBlock){
 
-	if(outLevel > nQueen ||  outLevel < 0){
+/*	if(outLevel > nQueen ||  outLevel < 0){
 		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceWorkSet::solve::LEVEL OUT OF BOUND");
 		return -1;
 	}
@@ -390,7 +390,7 @@ __device__ int DeviceWorkSet::solve(int who, int outLevel, int& nodes, int count
 	if(who >= this->count ||  who < 0){
 		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceWorkSet::solve::WHO OUT OF BOUND");
 		return -1;
-	}
+	}*/
 
 	extern __shared__ double sharedMem[];	
 
@@ -516,7 +516,7 @@ __device__ int DeviceWorkSet::solve(int who, int outLevel, int& nodes, int count
 __device__ int DeviceWorkSet::solveAndAdd(int who ,int level , int& nodes, int count, int* nodesPerBlock, int levelDiscriminant, DeviceParallelQueue& deviceParallelQueue){
 
 
-	if(level > nQueen || level < 0){
+/*	if(level > nQueen || level < 0){
 		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceWorkSet::solveAndAdd::LEVEL OUT OF BOUND");
 		return -1;
 	}
@@ -525,7 +525,7 @@ __device__ int DeviceWorkSet::solveAndAdd(int who ,int level , int& nodes, int c
 		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceWorkSet::solveAndAdd::WHO OUT OF BOUND");
 		return -1;
 	}
-
+*/
 	if(deviceVariableCollection[who].isFailed()){
 		return 0;
 	}else if(deviceVariableCollection[who].isGround()){

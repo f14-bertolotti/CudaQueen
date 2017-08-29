@@ -240,10 +240,10 @@ __device__ int DeviceParallelQueue::read(DeviceVariableCollection& element, int 
 __device__ int DeviceParallelQueue::expansion(DeviceVariableCollection& element, int level){
 
 
-	if(level > nQueen || level < 0){
+/*	if(level > nQueen || level < 0){
 		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceParallelQueue::expansion::LEVEL OUT OF BOUND");
 		return -1;
-	}
+	}*/
 
 
 	DeviceQueenPropagation deviceQueenPropagation;

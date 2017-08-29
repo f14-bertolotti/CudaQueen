@@ -1,0 +1,18 @@
+dati i risultati ottenuti da DiffBtwVer e andando in particolare a guardare l'efficienza ottenuta, si scopre che quest'ultima risulta essere particolarmente bassa.
+
+Tuttavia in altri contesti il raddoppio dei blocchi utilizzati porta ad avere dei risultati estremante migliori
+in termini di efficienza e di performance generali.
+
+Anlizzando più a fondo utilizzando il profiler nvdia si nota che il numero di accessi effettuati
+alla memoria globale nei casi con performance peggiori è più elevato.
+
+Questo comportamento è dovuto al fatto che prima di cominciare a risolvere direttamente la porzione dell'albero
+il programma tenta di allocare nuove grid senza riuscirci andando così a toccare il limite imposto dal numero
+massimo di blocchi.
+
+Quindi nel successivo ciclo di test invece viene utilizzato un numero di blocci doppio, a questo punto la situazione
+si sblocca e non è più necessario per il programma tentare di allocare nuove grid fallend a questo punto si ha
+un boost delle performance che porta l'efficienza in alcuni casi anche a valori superiori ad 1.
+
+Si conclude mostrando quindi l'importanza di non eccedere con il primo discriminante, in quanto quest'ultimo 
+porta velocemente alla saturazione della coda e ad un degrado delle performance

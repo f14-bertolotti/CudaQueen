@@ -89,26 +89,41 @@ for x in range(len(mean1B)):
 	speedUp.append(mean1B[x]/meanNBN[x])
  	efficiency.append(mean1B[x]/(meanNBN[x]*meanBlock[x]))
 
-plt.plot(xrange(4,13),speedUp,linewidth=1.0,color='red',label="NBN vs 1B")
+plt.bar(xrange(4,13),speedUp,linewidth=1.0,color='red',label="NBN vs 1B")
 
 plt.title('1 block vs n block speed up')
 plt.grid(True)
 figure = plt.gcf()
 figure.set_size_inches(14,12)
-plt.savefig("speedUp.png", bbox_inches='tight')
+plt.savefig("speedUp.png")
 plt.close()
 
 #-----------------------------------------------------------------------------
 
-plt.plot(xrange(4,13),efficiency,linewidth=1.0,color='red',label="NBN vs 1B")
+plt.bar(xrange(4,13),efficiency,linewidth=1.0,color='red',label="NBN vs 1B")
 
 plt.title('1 block vs n block efficiency')
 plt.grid(True)
 figure = plt.gcf()
 figure.set_size_inches(14,12)
-plt.savefig("efficiency.png", bbox_inches='tight')
+plt.savefig("efficiency.png")
 plt.close()
 
+#-----------------------------------------------------------------------------
+
+speedUp = []
+
+for x in range(len(mean1BS)):
+	speedUp.append(mean1BS[x]/meanNBN[x])
+
+plt.bar(xrange(4,13),speedUp,linewidth=1.0,color='red',label="NBN vs 1B")
+
+plt.title('1 block Simple vs n block speed up')
+plt.grid(True)
+figure = plt.gcf()
+figure.set_size_inches(14,12)
+plt.savefig("speedUp2.png")
+plt.close()
 
 
 

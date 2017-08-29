@@ -132,7 +132,7 @@ __device__ void externAssignParallel(int* domain, int size, int value){
 
 __device__ inline int DeviceVariable::assign(int value){
 
-	if(value < 0 || value >= domainSize){
+/*	if(value < 0 || value >= domainSize){
 		ErrorChecking::deviceError("Error::Variable::assign::ASSIGNMENT OUT OF BOUND");
 		return -1;
 	}
@@ -150,7 +150,7 @@ __device__ inline int DeviceVariable::assign(int value){
 	if(ground >= 0 && value != ground){
 		ErrorChecking::deviceError("Error::Variable::assign::VARIABLE NOT GROUND");
 		return -1;
-	}
+	}*/
 
 
 	externAssignParallel(domain, domainSize, value);
@@ -180,7 +180,7 @@ __global__ void externUndoAssignParallel(int* domain, int size, int value){
 
 __device__ inline int DeviceVariable::undoAssign(int value){
 
-	if(value < 0 || value >= domainSize){
+/*	if(value < 0 || value >= domainSize){
 		ErrorChecking::deviceError("Error::Variable::undoAssign::OUT OF BOUND");
 		return -1;
 	}
@@ -188,7 +188,7 @@ __device__ inline int DeviceVariable::undoAssign(int value){
 	if(ground == -1){
 		ErrorChecking::deviceError("Error::Variable::undoAssign::VARIABLE NOT GROUND");
 		return -1;
-	}
+	}*/
 
 	cudaStream_t s;
 	ErrorChecking::deviceErrorCheck(cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking),"DeviceVariable::undoAssign");
@@ -206,11 +206,11 @@ __device__ inline int DeviceVariable::undoAssign(int value){
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 __device__ inline void DeviceVariable::addTo(int value, int delta){
-	if(value < 0 || value >= domainSize){
+/*	if(value < 0 || value >= domainSize){
 
 		ErrorChecking::deviceError("Error::Variable::addTo::ADDING OUT OF BOUND");
 		return;
-	}
+	}*/
 	
 	if(domain[value] > 0 && domain[value] + delta <= 0) changed = 1;
 

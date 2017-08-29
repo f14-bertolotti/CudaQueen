@@ -1,0 +1,19 @@
+andiamo ora a valutare il tempi di elaborazione in base al numero di stati visitati.
+
+In questo modo possiamo valutare uniformemente anche problemi di grandezza diversa.
+
+Notiamo che nel grafico che ragruppa i tempi in base al numero delle regine,
+tutti e 3 i gruppi hanno forma simile.
+
+Il primo picco è in corrispondenza di numeri bassi per il primo discriminante,
+nel caso di 12 inoltre quest'ultimo è più accentuato questo è dovuto non solo
+al basso numero di blocchi ma anche ad un eccessivo utilizzo della coda
+che porta a tempi per il singolo stato elevati
+in ultimo si ha anche una crescita dei tempi per 12 regine per quanto riguarda gli ultimi
+test, in questo caso il peggioramento è dovuto alla saturazione della prima coda.
+
+
+in ultimo vediamo il grafico che separa i gruppi in base al primo discriminante, in questo
+caso otteniamo degli insiemi più uniformi.
+I tempi maggiori li troviamo per livelli bassi ed alti le motivazioni di ciò sono ancora una
+volta da ricercarsi rispettivamente nel numero basso di blocchi e  nella saturazione della seconda coda.
