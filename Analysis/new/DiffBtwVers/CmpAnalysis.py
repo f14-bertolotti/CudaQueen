@@ -67,14 +67,15 @@ plt.plot(range(4,13),mean1B,linewidth=1.0,color='blue',label="1B")
 plt.plot(range(4,13),meanNB,linewidth=1.0,color='green',label="NB")
 plt.plot(range(4,13),meanNBN,linewidth=1.0,color='magenta',label="NBN")
 
-B = mpatches.Patch(color='red', label='1block')
-BS = mpatches.Patch(color='blue', label='1blockSimple')
+B = mpatches.Patch(color='red', label='1blockSimple')
+BS = mpatches.Patch(color='blue', label='1block')
 NB = mpatches.Patch(color='green', label='Nblock')
 NBN = mpatches.Patch(color='magenta', label='NblockNew')
 
 plt.legend(handles=[B, BS, NB, NBN],loc=2,prop={'size': 8});
 plt.title('compare time versions')
 plt.grid(True)
+plt.yscale('log')
 figure = plt.gcf()
 figure.set_size_inches(14,12)
 plt.savefig("compare.png", bbox_inches='tight')
@@ -83,12 +84,18 @@ plt.close()
 #-----------------------------------------------------------------------------
 
 speedUp = []
-efficiency = []
+efficiency1 = []
+efficiency2 = []
+speedUp1Bvs1BS = []
 
 for x in range(len(mean1B)):
 	speedUp.append(mean1B[x]/meanNBN[x])
- 	efficiency.append(mean1B[x]/(meanNBN[x]*meanBlock[x]))
-
+	speedUp1Bvs1BS.append(mean1BS[x]/mean1B[x])
+ 	efficiency1.append(mean1B[x]/(meanNBN[x]*meanBlock[x]))
+	if meanBlock[x] < 13:
+ 		efficiency2.append(mean1B[x]/(meanNBN[x]*meanBlock[x]))
+	else:
+ 		efficiency2.append(mean1B[x]/(meanNBN[x]*13))
 plt.bar(xrange(4,13),speedUp,linewidth=1.0,color='red',label="NBN vs 1B")
 
 plt.title('1 block vs n block speed up')
@@ -98,15 +105,37 @@ figure.set_size_inches(14,12)
 plt.savefig("speedUp.png")
 plt.close()
 
+
 #-----------------------------------------------------------------------------
 
-plt.bar(xrange(4,13),efficiency,linewidth=1.0,color='red',label="NBN vs 1B")
+plt.bar(xrange(4,13),speedUp1Bvs1BS,linewidth=1.0,color='black')
+plt.title('<<<1,1>>> vs <<<1,1024>>>')
+plt.grid(True)
+figure = plt.gcf()
+figure.set_size_inches(14,12)
+plt.savefig("speedUp1BSvs1B.png")
+plt.close()
+
+#-----------------------------------------------------------------------------
+
+plt.bar(xrange(4,13),efficiency1,linewidth=1.0,color='red',label="NBN vs 1B")
 
 plt.title('1 block vs n block efficiency')
 plt.grid(True)
 figure = plt.gcf()
 figure.set_size_inches(14,12)
 plt.savefig("efficiency.png")
+plt.close()
+
+#-----------------------------------------------------------------------------
+
+plt.bar(xrange(4,13),efficiency2,linewidth=1.0,color='red',label="NBN vs 1B")
+
+plt.title('1 block vs n block efficiency')
+plt.grid(True)
+figure = plt.gcf()
+figure.set_size_inches(14,12)
+plt.savefig("efficiencyPerSP.png")
 plt.close()
 
 #-----------------------------------------------------------------------------

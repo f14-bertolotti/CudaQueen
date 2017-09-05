@@ -1,7 +1,7 @@
 CC		= g++
 NCC		= nvcc
 CFLAGS	= -Wall -Wextra -std=c++11
-NCCFLAGS	= --std=c++11 -g -G -arch=sm_35 -rdc=true
+NCCFLAGS	= --std=c++11 -G -arch=sm_35 -rdc=true
 LIB			= -L/usr/lib/x86_64-linux-gnu/
 
 

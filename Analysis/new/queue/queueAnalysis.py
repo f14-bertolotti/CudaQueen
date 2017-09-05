@@ -8,6 +8,10 @@ QueenSet1 = 8
 QueenSet2 = 10
 QueenSet3 = 12
 
+maxDiff8 = 0
+maxDiff10 = 0
+maxDiff12 = 0
+
 sampleNumber = 5
 
 matWQSet1 = genfromtxt("outWQ8")
@@ -107,33 +111,58 @@ for i in range(QueenSet3):
  			assiTicksSet3.append(str(i)+","+str(j))
  			count += 1;
 
+for i in range(len(meanWQSet1)):
+	if(meanNQSet1[i]-meanWQSet1[i]>maxDiff8):
+		maxDiff8 = meanNQSet1[i]-meanWQSet1[i];
 
-# plt.xticks(assiXSet1,assiTicksSet1)
-# plt.plot(assiXSet1,meanWQSet1,linewidth=1.0,color='red',label="mean_with_q")
-# plt.plot(assiXSet1,meanNQSet1,linewidth=1.0,color='blue',label="mean_without_q")
-# WQueue = mpatches.Patch(color='red', label='meanWithQ')
-# NQueue = mpatches.Patch(color='blue', label='meanWithoutQ')
-# plt.legend(handles=[WQueue, NQueue]);
-# plt.title('8 queen')
-# plt.grid(True)
-# plt.show();
+for i in range(len(meanWQSet2)):
+	if(meanNQSet2[i]-meanWQSet2[i]>maxDiff10):
+		maxDiff10 = meanNQSet2[i]-meanWQSet2[i];
 
-# plt.xticks(assiXSet2,assiTicksSet2)
-# plt.plot(assiXSet2,meanWQSet2,linewidth=1.0,color='red',label="mean_with_q")
-# plt.plot(assiXSet2,meanNQSet2,linewidth=1.0,color='blue',label="mean_without_q")
-# WQueue = mpatches.Patch(color='red', label='meanWithQ')
-# NQueue = mpatches.Patch(color='blue', label='meanWithoutQ')
-# plt.legend(handles=[WQueue, NQueue]);
-# plt.title('10 queen')
-# plt.grid(True)
-# plt.show();
+for i in range(len(meanWQSet3)):
+	if(meanNQSet3[i]-meanWQSet3[i]>maxDiff12):
+		maxDiff12 = meanNQSet3[i]-meanWQSet3[i];
 
-# plt.xticks(assiXSet3,assiTicksSet3)
-# plt.plot(assiXSet3,meanWQSet3,linewidth=1.0,color='red',label="mean_with_q")
-# plt.plot(assiXSet3,meanNQSet3,linewidth=1.0,color='blue',label="mean_without_q")
-# WQueue = mpatches.Patch(color='red', label='meanWithQ')
-# NQueue = mpatches.Patch(color='blue', label='meanWithoutQ')
-# plt.legend(handles=[WQueue, NQueue]);
-# plt.title('12 queen')
-# plt.grid(True)
-# plt.show();
+print "max Diff 8: " + str(maxDiff8)
+print "max Diff 10: " + str(maxDiff10)
+print "max Diff 12: " + str(maxDiff12)
+
+
+figure = plt.gcf()
+figure.set_size_inches(16,12)
+plt.xticks(assiXSet1,assiTicksSet1)
+plt.plot(assiXSet1,meanWQSet1,linewidth=1.0,color='red',label="mean_with_q")
+plt.plot(assiXSet1,meanNQSet1,linewidth=1.0,color='blue',label="mean_without_q")
+WQueue = mpatches.Patch(color='red', label='with queue')
+NQueue = mpatches.Patch(color='blue', label='withouth queue')
+plt.legend(handles=[WQueue, NQueue]);
+plt.title('8 queen')
+plt.grid(True)
+plt.savefig('8queen.png', bbox_inches='tight');
+plt.close()
+
+figure = plt.gcf()
+figure.set_size_inches(16,12)
+plt.xticks(assiXSet2,assiTicksSet2)
+plt.plot(assiXSet2,meanWQSet2,linewidth=1.0,color='red',label="mean_with_q")
+plt.plot(assiXSet2,meanNQSet2,linewidth=1.0,color='blue',label="mean_without_q")
+WQueue = mpatches.Patch(color='red', label='with queue')
+NQueue = mpatches.Patch(color='blue', label='withouth queue')
+plt.legend(handles=[WQueue, NQueue]);
+plt.title('10 queen')
+plt.grid(True)
+plt.savefig('10queen.png', bbox_inches='tight');
+plt.close()
+
+figure = plt.gcf()
+figure.set_size_inches(16,12)
+plt.xticks(assiXSet3,assiTicksSet3)
+plt.plot(assiXSet3,meanWQSet3,linewidth=1.0,color='red',label="mean_with_q")
+plt.plot(assiXSet3,meanNQSet3,linewidth=1.0,color='blue',label="mean_without_q")
+WQueue = mpatches.Patch(color='red', label='with queue')
+NQueue = mpatches.Patch(color='blue', label='withouth queue')
+plt.legend(handles=[WQueue, NQueue]);
+plt.title('12 queen')
+plt.grid(True)
+plt.savefig('12queen.png', bbox_inches='tight');
+plt.close()
