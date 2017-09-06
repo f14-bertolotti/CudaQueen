@@ -3,7 +3,6 @@
 #include "../TripleQueue/TripleQueue.cu"
 #include "../VariableCollection/VariableCollection.cu"
 #include "../QueenPropagation/QueenPropagation.cu"
-#include "../QueenConstraints/QueenConstraints.cu"
 #include "../ErrorChecking/ErrorChecking.cu"
 #include "../parallelQueue/parallelQueue.cu"
 #include <cstdio>
@@ -78,7 +77,6 @@ struct DeviceWorkSet{
 
 	DeviceVariable* deviceVariable;
 	DeviceVariableCollection* deviceVariableCollection;
-	DeviceQueenConstraints deviceQueenConstraints;
 	DeviceQueenPropagation deviceQueenPropagation;
 
 	int nQueen;					//size of row and size of column
@@ -282,14 +280,14 @@ __device__ void externExpand(DeviceWorkSet& deviceWorkSet, int who, int count, i
 	}
 	
 	for(int i = sharedCount; i < sharedCount+nValues-1; ++i){
-			deviceQueenPropagation.parallelForwardPropagation2(
+			deviceQueenPropagation.parallelForwardChecking(
 				deviceWorkSet.deviceVariableCollection[i],
 				level,
 				deviceWorkSet.deviceVariableCollection[i].deviceVariable[level].ground);
 			__syncthreads();
 	}
 
-	deviceQueenPropagation.parallelForwardPropagation2(
+	deviceQueenPropagation.parallelForwardChecking(
 		deviceWorkSet.deviceVariableCollection[who],
 		level,
 		deviceWorkSet.deviceVariableCollection[who].deviceVariable[level].ground);
@@ -435,7 +433,7 @@ __device__ int DeviceWorkSet::solve(int who, int outLevel, int& nodes, int count
 		if(sharedCollection.isGround()){
 			if(threadIdx.x == 0)++nSols;
 			__syncthreads();
-			deviceQueenPropagation.parallelUndoForwardPropagation(sharedCollection);
+			deviceQueenPropagation.parallelBacktracking(sharedCollection);
 			if(threadIdx.x == 0){
 				--level;
 			}	
@@ -456,7 +454,7 @@ __device__ int DeviceWorkSet::solve(int who, int outLevel, int& nodes, int count
 						done = true;
 					}else{
 
-						deviceQueenPropagation.parallelUndoForwardPropagation(sharedCollection);
+						deviceQueenPropagation.parallelBacktracking(sharedCollection);
 
 						if(threadIdx.x == 0){
 							level -= levelUp;
@@ -473,9 +471,9 @@ __device__ int DeviceWorkSet::solve(int who, int outLevel, int& nodes, int count
 						++nodesPerBlock[count];
 					}
 
-					if(deviceQueenPropagation.parallelForwardPropagation2(sharedCollection,level,val)){
+					if(deviceQueenPropagation.parallelForwardChecking(sharedCollection,level,val)){
 						__syncthreads();
-						deviceQueenPropagation.parallelUndoForwardPropagation(sharedCollection);
+						deviceQueenPropagation.parallelBacktracking(sharedCollection);
 
 						if(threadIdx.x == 0){
 							--level;

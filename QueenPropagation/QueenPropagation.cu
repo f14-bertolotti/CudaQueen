@@ -12,16 +12,14 @@ struct DeviceQueenPropagation{
 	__device__ int static inline allDifferent(DeviceVariableCollection&,int,int,int);		//propagate for all different constraint code 3
 	__device__ int static inline diagDifferent(DeviceVariableCollection&,int,int,int);	//propagate for diag constraint code 4
 
-	__device__ int static inline forwardPropagation(DeviceVariableCollection&,int,int);	//csp forward propagation code 5
-	__device__ int static inline undoForwardPropagation(DeviceVariableCollection&);		//csp undo forward propagation
+	__device__ int static inline sequentialForwardChecking(DeviceVariableCollection&,int,int);	//csp forward propagation code 5
+	__device__ int static inline sequentialBacktracking(DeviceVariableCollection&);		//csp undo forward propagation
 
 	//////////////////////////////////////MULTI THREAD//////////////////////////////////////
 
-	__device__ int static inline parallelForwardPropagation(DeviceVariableCollection&,int,int,cudaStream_t&);	//forward, uses parallelPropagation code 5
-	__device__ int static inline parallelForwardPropagation(DeviceVariableCollection&,int,int);	//forward, uses parallelPropagation code 5
-	__device__ int static inline parallelForwardPropagation2(DeviceVariableCollection&,int,int);
-	__device__ int static inline parallelForwardPropagation2(DeviceVariableCollection&,int,int,cudaStream_t&);
-	__device__ int static inline parallelUndoForwardPropagation(DeviceVariableCollection&);		//csp undo forward propagation
+	__device__ int static inline parallelForwardChecking(DeviceVariableCollection&,int,int);
+	__device__ int static inline parallelForwardChecking(DeviceVariableCollection&,int,int,cudaStream_t&);
+	__device__ int static inline parallelBacktracking(DeviceVariableCollection&);		//csp undo forward propagation
 };
 
 ////////////////////////////////////////////////////////////////////////////
@@ -151,20 +149,20 @@ __device__ int inline DeviceQueenPropagation::diagDifferent(DeviceVariableCollec
 
 ////////////////////////////////////////////////////////////////////////////
 
-__device__ int inline DeviceQueenPropagation::forwardPropagation(DeviceVariableCollection& vc, int var, int val){
+__device__ int inline DeviceQueenPropagation::sequentialForwardChecking(DeviceVariableCollection& vc, int var, int val){
 
 /*	if(var < 0 || var > vc.nQueen){
-		ErrorChecking::deviceError("Error::DeviceQueenPropagation::forwardPropagation:: VAR OUT OF BOUND");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::sequentialForwardChecking:: VAR OUT OF BOUND");
 		return -1;
 	}
 
 	if(val < 0 || val > vc.nQueen){
-		ErrorChecking::deviceError("Error::DeviceQueenPropagation::forwardPropagation:: VAL OUT OF BOUND");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::sequentialForwardChecking:: VAL OUT OF BOUND");
 		return -1;
 	}
 
 	if(vc.deviceVariable[var].ground != val){
-		ErrorChecking::deviceError("Error::DeviceQueenPropagation::forwardPropagation::VARIABLE NOT GROUND");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::sequentialForwardChecking::VARIABLE NOT GROUND");
 		return -1;
 	}*/
 
@@ -196,15 +194,15 @@ __device__ int inline DeviceQueenPropagation::forwardPropagation(DeviceVariableC
 
 ////////////////////////////////////////////////////////////////////////////
 
-__device__ int inline DeviceQueenPropagation::undoForwardPropagation(DeviceVariableCollection& vc){
+__device__ int inline DeviceQueenPropagation::sequentialBacktracking(DeviceVariableCollection& vc){
 
 /*	if(vc.deviceQueue.front()->cs!=5){
-		ErrorChecking::deviceError("Error::DeviceQueenPropagation::undoForwardPropagation::ERROR IN QUEUE");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::sequentialBacktracking::ERROR IN QUEUE");
 		return -1;		
 	}
 
 	if(vc.deviceQueue.empty()){
-		ErrorChecking::deviceError("Error::DeviceQueenPropagation::undoForwardPropagation::EMPTY QUEUE");
+		ErrorChecking::deviceError("Error::DeviceQueenPropagation::sequentialBacktracking::EMPTY QUEUE");
 		return -1;		
 	}*/
 
@@ -238,7 +236,7 @@ __device__ int inline DeviceQueenPropagation::undoForwardPropagation(DeviceVaria
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceQueenPropagation::parallelForwardPropagation2(DeviceVariableCollection& vc, int var, int val){
+__device__ int DeviceQueenPropagation::parallelForwardChecking(DeviceVariableCollection& vc, int var, int val){
 
 /*	if(var < 0 || var > vc.nQueen){
 		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation::VAR OUT OF BOUND");
@@ -399,7 +397,7 @@ __device__ int DeviceQueenPropagation::parallelForwardPropagation2(DeviceVariabl
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceQueenPropagation::parallelForwardPropagation2(DeviceVariableCollection& vc, int var, int val, cudaStream_t& s){
+__device__ int DeviceQueenPropagation::parallelForwardChecking(DeviceVariableCollection& vc, int var, int val, cudaStream_t& s){
 
 
 
@@ -449,15 +447,15 @@ __global__ void externPropagation2(DeviceVariableCollection& vc, int var, int va
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-__device__ int inline DeviceQueenPropagation::parallelUndoForwardPropagation(DeviceVariableCollection& vc){
+__device__ int inline DeviceQueenPropagation::parallelBacktracking(DeviceVariableCollection& vc){
 
 /*	if(vc.deviceQueue.front()->cs!=5){
-		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelUndoForwardPropagation::ERROR IN QUEUE");
+		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelBacktracking::ERROR IN QUEUE");
 		return -1;		
 	}
 
 	if(vc.deviceQueue.empty()){
-		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelUndoForwardPropagation::EMPTY QUEUE");
+		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelBacktracking::EMPTY QUEUE");
 		return -1;		
 	}*/
 

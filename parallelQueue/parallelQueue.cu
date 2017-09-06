@@ -3,7 +3,6 @@
 #include "../TripleQueue/TripleQueue.cu"
 #include "../VariableCollection/VariableCollection.cu"
 #include "../QueenPropagation/QueenPropagation.cu"
-#include "../QueenConstraints/QueenConstraints.cu"
 #include "../ErrorChecking/ErrorChecking.cu"
 #include <cstdio>
 
@@ -329,7 +328,7 @@ __syncthreads();
 
 		__syncthreads();
 
-		deviceQueenPropagation.parallelForwardPropagation2(deviceVariableCollection[positions[i]],level,values[i]);
+		deviceQueenPropagation.parallelForwardChecking(deviceVariableCollection[positions[i]],level,values[i]);
 
 		__syncthreads();
 
@@ -350,7 +349,7 @@ __syncthreads();
 
 	__syncthreads();
 
-	deviceQueenPropagation.parallelForwardPropagation2(element,level,val);
+	deviceQueenPropagation.parallelForwardChecking(element,level,val);
 
 	return nValues+1;
 }
