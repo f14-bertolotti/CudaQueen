@@ -421,8 +421,6 @@ __device__ int inline DeviceQueenPropagation::parallelBacktracking(DeviceVariabl
 		vc.deviceQueue.pop();
 	}
 
-	__syncthreads();
-
 	if(threadIdx.x >= t1+1 && threadIdx.x < vc.nQueen){
 		vc.lastValues[threadIdx.x]=0;
 	}
@@ -430,8 +428,6 @@ __device__ int inline DeviceQueenPropagation::parallelBacktracking(DeviceVariabl
 	__syncthreads();
 
 	while(vc.deviceQueue.front()->cs!=5){
-
-		__syncthreads();
 
 		int col = threadIdx.x % vc.nQueen;
 		int row = int(threadIdx.x/vc.nQueen);
