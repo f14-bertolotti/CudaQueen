@@ -256,8 +256,8 @@ __device__ int DeviceQueenPropagation::parallelForwardChecking(DeviceVariableCol
 	__syncthreads();*/
 
 	{
-		int columnIndex = int((threadIdx.x % (vc.nQueen * vc.nQueen))%vc.nQueen);
-		int rowIndex = int(((threadIdx.x % (vc.nQueen * vc.nQueen))/vc.nQueen) % vc.nQueen);
+		int columnIndex = threadIdx.x % vc.nQueen;
+		int rowIndex = int(threadIdx.x/vc.nQueen);
 
 		__shared__ bool ch;
 
@@ -397,56 +397,6 @@ __device__ int DeviceQueenPropagation::parallelForwardChecking(DeviceVariableCol
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__device__ int DeviceQueenPropagation::parallelForwardChecking(DeviceVariableCollection& vc, int var, int val, cudaStream_t& s){
-
-
-
-/*	if(var < 0 || var > vc.nQueen){
-		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation::VAR OUT OF BOUND");
-		return -1;
-	}
-
-	if(val < 0 || val > vc.nQueen){
-		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation::VAL OUT OF BOUND");
-		return -1;
-	}
-
-	if(vc.deviceVariable[var].ground != val){
-		if(threadIdx.x == 0)ErrorChecking::deviceError("Error::DeviceQueenPropagation::parallelForwardPropagation::VARIABLE NOT GROUND");
-		return -1;
-	}*/
-
-
-	vc.deviceQueue.add(var,val,5);
-
-	return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-__global__ void externPropagation2(DeviceVariableCollection& vc, int var, int val, int nQueen,int delta){
-
-	int col = int((threadIdx.x + blockIdx.x * blockDim.x % (nQueen * nQueen))%nQueen);
-	int row = int(((threadIdx.x + blockIdx.x * blockDim.x % (nQueen * nQueen))/nQueen) % nQueen);
-
-	if(row != var && val == col){
-		atomicAdd(&vc.deviceVariable[row].domain[col],1);
-	}
-	
-	if(row != var && col == row && col+val-var < vc.nQueen && col+val-var >= 0){
-		atomicAdd(&vc.deviceVariable[row].domain[col+val-var],1);
-	}
-	
-	if(row != var && vc.nQueen-col == row && col-(vc.nQueen-val)+var < vc.nQueen && col-(vc.nQueen-val)+var >= 0){
-		atomicAdd(&vc.deviceVariable[row].domain[col-(vc.nQueen-val)+var],1);
-	}
-
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
 __device__ int inline DeviceQueenPropagation::parallelBacktracking(DeviceVariableCollection& vc){
 
 /*	if(vc.deviceQueue.front()->cs!=5){
@@ -483,8 +433,8 @@ __device__ int inline DeviceQueenPropagation::parallelBacktracking(DeviceVariabl
 
 		__syncthreads();
 
-		int col = int((threadIdx.x % (vc.nQueen * vc.nQueen))%vc.nQueen);
-		int row = int(((threadIdx.x % (vc.nQueen * vc.nQueen))/vc.nQueen) % vc.nQueen);
+		int col = threadIdx.x % vc.nQueen;
+		int row = int(threadIdx.x/vc.nQueen);
 
 		int var = vc.deviceQueue.front()->var;
 		int val = vc.deviceQueue.front()->val;
