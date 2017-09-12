@@ -136,6 +136,8 @@ plt.plot(assiXSet1,meanNQSet1,linewidth=1.0,color='blue',label="mean_without_q")
 WQueue = mpatches.Patch(color='red', label='with queue')
 NQueue = mpatches.Patch(color='blue', label='withouth queue')
 plt.legend(handles=[WQueue, NQueue]);
+plt.xlabel('n. queens')
+plt.ylabel('times(ms)')
 plt.title('8 queen')
 plt.grid(True)
 plt.savefig('8queen.png', bbox_inches='tight');
@@ -150,6 +152,8 @@ WQueue = mpatches.Patch(color='red', label='with queue')
 NQueue = mpatches.Patch(color='blue', label='withouth queue')
 plt.legend(handles=[WQueue, NQueue]);
 plt.title('10 queen')
+plt.xlabel('<levelDiscriminant1,leveldiscriminant2>')
+plt.ylabel('times(ms)')
 plt.grid(True)
 plt.savefig('10queen.png', bbox_inches='tight');
 plt.close()
@@ -163,6 +167,8 @@ WQueue = mpatches.Patch(color='red', label='with queue')
 NQueue = mpatches.Patch(color='blue', label='withouth queue')
 plt.legend(handles=[WQueue, NQueue]);
 plt.title('12 queen')
+plt.xlabel('n. queens')
+plt.ylabel('times(ms)')
 plt.grid(True)
 plt.savefig('12queen.png', bbox_inches='tight');
 plt.close()

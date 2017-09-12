@@ -427,7 +427,7 @@ __device__ int inline DeviceQueenPropagation::parallelBacktracking(DeviceVariabl
 
 	__syncthreads();
 
-	while(vc.deviceQueue.front()->cs!=5){
+	while(vc.deviceQueue.front()->cs!=5 && !vc.deviceQueue.empty()){
 
 		int col = threadIdx.x % vc.nQueen;
 		int row = int(threadIdx.x/vc.nQueen);
@@ -452,10 +452,6 @@ __device__ int inline DeviceQueenPropagation::parallelBacktracking(DeviceVariabl
 		__syncthreads();
 
 		if(threadIdx.x == 0)vc.deviceQueue.pop();
-
-		__syncthreads();
-
-		if(vc.deviceQueue.empty())break;
 
 		__syncthreads();
 	}

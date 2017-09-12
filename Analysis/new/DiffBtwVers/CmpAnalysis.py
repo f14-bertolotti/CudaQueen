@@ -73,9 +73,11 @@ NB = mpatches.Patch(color='green', label='Nblock')
 NBN = mpatches.Patch(color='magenta', label='NblockNew')
 
 plt.legend(handles=[B, BS, NB, NBN],loc=2,prop={'size': 8});
-plt.title('compare time versions')
+plt.title('time comparison')
 plt.grid(True)
 plt.yscale('log')
+plt.xlabel('n.queens')
+plt.ylabel('time(ms)')
 figure = plt.gcf()
 figure.set_size_inches(14,12)
 plt.savefig("compare.png", bbox_inches='tight')
@@ -122,6 +124,8 @@ plt.bar(xrange(4,13),efficiency1,linewidth=1.0,color='red',label="NBN vs 1B")
 
 plt.title('1 block vs n block efficiency')
 plt.grid(True)
+plt.xlabel("n. queens");
+plt.ylabel("efficiency");
 figure = plt.gcf()
 figure.set_size_inches(14,12)
 plt.savefig("efficiency.png")
@@ -135,6 +139,8 @@ plt.title('1 block vs n block efficiency')
 plt.grid(True)
 figure = plt.gcf()
 figure.set_size_inches(14,12)
+plt.xlabel("n. queens");
+plt.ylabel("efficiency");
 plt.savefig("efficiencyPerSP.png")
 plt.close()
 
@@ -147,10 +153,12 @@ for x in range(len(mean1BS)):
 
 plt.bar(xrange(4,13),speedUp,linewidth=1.0,color='red',label="NBN vs 1B")
 
-plt.title('1 block Simple vs n block speed up')
+plt.title('1 block Simple vs n block')
 plt.grid(True)
 figure = plt.gcf()
 figure.set_size_inches(14,12)
+plt.xlabel("n. queens");
+plt.ylabel("speed up");
 plt.savefig("speedUp2.png")
 plt.close()
 

@@ -54,6 +54,8 @@ for QueenSet in QueenSets:
 plt.xticks(xTicksPos,QueenSets)
 plt.bar(pos,timesPerState,color='black')
 plt.title("Grouped By Queen")
+plt.xlabel('n. queens')
+plt.ylabel('time per state(ms)')
 plt.savefig("GroupedByQueen.png")
 plt.show()
 #print timesPerState

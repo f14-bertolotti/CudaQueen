@@ -11,7 +11,7 @@ done;
 
 NQUEEN=10;
 n=$NQUEEN;
-for((l=1;l<NQUEEN;l++)); do
+for((l=0;l<1;l++)); do
 	for((k=l+1;k<NQUEEN;k++)); do 
 		for m in {1..5}; do
 			../../../bin/RCUDA2 -n $NQUEEN -l $l -k $k -q 60000 -b 60000 -f >> out$n-$l-$k;

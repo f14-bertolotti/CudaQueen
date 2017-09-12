@@ -55,6 +55,8 @@ for l in range(12):
 plt.xticks(xTicksPos,xrange(1,11))
 plt.bar(pos,timesPerState,color='black')
 plt.title("Grouped By Discriminant 1")
+plt.xlabel('levelDiscriminant1');
+plt.ylabel('time per state(ms)')
 plt.savefig("GroupedByDiscriminant1.png")
 plt.show()
 #print timesPerState
