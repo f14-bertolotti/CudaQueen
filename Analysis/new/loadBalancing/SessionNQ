@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<session version="2" name="SessionNQ" hscale="1.5594069226445105E-7">
+<session version="2" name="SessionNQ" hscale="1.375559069007461E-7">
 <executable file="/home/the14th/playground/git-repo/CudaQueen/bin/RCUDA2" timestamp="1503582552000" args="-n 12 -l 3 -k 4 -f -q 0 -b 1000" profileonstart="true" concurrentkernels="true" apitrace="true" environmentprofiling="false" uvmprofiling="true"><envs></envs><multiProcess type="0" rumMPS="false"/></executable>
 <expert><columnprops><column kind="START_TIME" width="107"/><column kind="NAME" width="240"/></columnprops>
 <columnorder><column kind="NAME"/><column kind="INVOCATIONS"/><column kind="START_TIME"/><column kind="DURATION"/><column kind="AVG_DURATION"/><column kind="GRID_SIZE"/><column kind="BLOCK_SIZE"/><column kind="REGS_PER_THREAD"/><column kind="STAT_SHARED_MEM"/><column kind="DYNA_SHARED_MEM"/><column kind="AVG_DYNA_SHARED_MEM"/><column kind="BYTE_SIZE"/><column kind="THROUGHPUT"/><column kind="EMPTY"/></columnorder>
@@ -18,7 +18,7 @@
 <timeline pathname="GeForce GTX 970" kind="DEVICE" containerstate="OPEN_ALL" filtered="false"/>
 <timeline pathname="GeForce GTX 970/1" kind="CONTEXT" containerstate="OPEN_ALL" filtered="false"/>
 <timeline pathname="GeForce GTX 970/1/Compute" kind="KERNELS" containerstate="OPEN_ALL" filtered="false"/>
-<timeline pathname="GeForce GTX 970/1/Compute/test(int, int, int)" kind="KERNEL" containerstate="CLOSED" filtered="false"/>
+<timeline pathname="GeForce GTX 970/1/Compute/test(int, int, int)" kind="KERNEL" containerstate="OPEN_ALL" filtered="false"/>
 <timeline pathname="GeForce GTX 970/1/Compute/initWorkSet(DeviceVariableCollection*, DeviceVariable*, int*, int*, Triple*, int, int)" kind="KERNEL" containerstate="CLOSED" filtered="false"/>
 <timeline pathname="GeForce GTX 970/1/Compute/results(void)" kind="KERNEL" containerstate="OPEN_ALL" filtered="false"/>
 <timeline pathname="GeForce GTX 970/1/Compute/initParallelQueue(DeviceVariableCollection*, DeviceVariable*, int*, int*, int*, int*, Triple*, int, int)" kind="KERNEL" containerstate="CLOSED" filtered="false"/>

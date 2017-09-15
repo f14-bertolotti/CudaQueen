@@ -200,7 +200,7 @@ __device__ void externCopy(DeviceVariableCollection& to,DeviceVariableCollection
 
 __device__ DeviceVariableCollection& DeviceVariableCollection::operator=(DeviceVariableCollection& other){
 
-	__shared__ int next1; 
+/*	__shared__ int next1; 
 	__shared__ int next2; 
 	__shared__ int next3;
 
@@ -224,9 +224,25 @@ __device__ DeviceVariableCollection& DeviceVariableCollection::operator=(DeviceV
 	}
 
 	if(threadIdx.x == 1023)
-		this->deviceQueue.count = other.deviceQueue.count;
+		this->deviceQueue.count = other.deviceQueue.count;*/
 
-	__syncthreads();
+	if(threadIdx.x < 3*nQueen*nQueen)
+		this->deviceQueue.q[threadIdx.x] = other.deviceQueue.q[threadIdx.x];
+
+	if(threadIdx.x < nQueen*nQueen)
+		this->dMem[threadIdx.x] = other.dMem[threadIdx.x];
+
+	if(threadIdx.x < nQueen)
+		this->lastValues[threadIdx.x] = other.lastValues[threadIdx.x];
+
+	if(threadIdx.x < nQueen){
+		this->deviceVariable[threadIdx.x].ground = other.deviceVariable[threadIdx.x].ground;
+		this->deviceVariable[threadIdx.x].failed = other.deviceVariable[threadIdx.x].failed;
+		this->deviceVariable[threadIdx.x].changed = other.deviceVariable[threadIdx.x].changed;
+	}
+
+	if(threadIdx.x == 1023)
+		this->deviceQueue.count = other.deviceQueue.count;
 
 	return *this;
 }
