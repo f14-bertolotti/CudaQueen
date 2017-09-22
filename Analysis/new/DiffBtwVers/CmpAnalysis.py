@@ -2,7 +2,10 @@ from matplotlib import pyplot
 from pylab import genfromtxt
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
+
+matplotlib.rcParams.update({'font.size':30})
 
 mat1B = genfromtxt("1Block")
 mat1BS = genfromtxt("1BlockSimple")
@@ -72,7 +75,7 @@ BS = mpatches.Patch(color='blue', label='1block')
 NB = mpatches.Patch(color='green', label='Nblock')
 NBN = mpatches.Patch(color='magenta', label='NblockNew')
 
-plt.legend(handles=[B, BS, NB, NBN],loc=2,prop={'size': 8});
+plt.legend(handles=[B, BS, NB, NBN],loc=2,prop={'size': 22});
 plt.title('time comparison')
 plt.grid(True)
 plt.yscale('log')
